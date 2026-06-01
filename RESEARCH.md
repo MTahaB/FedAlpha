@@ -1,0 +1,53 @@
+# FedAlpha v2 Research Plan
+
+## Questions
+
+1. Does Federated Learning improve performance compared with isolated local models?
+2. What is the performance cost of Differential Privacy in trading signals?
+3. Does a federated model generalize better across market regimes?
+4. Does post-FL personalization improve each institution's local Sharpe ratio?
+
+## Baseline Hierarchy
+
+| Baseline | Purpose |
+|---|---|
+| Buy and Hold S&P 500 | Passive reference |
+| Equal Weight | Naive rebalanced equity allocation |
+| Momentum 20D | Simple quant rule |
+| Local Ridge per institution | Isolated learning limit |
+| Centralized Ridge | Upper bound without privacy constraint |
+| FL + FedAvg | Basic collaboration |
+| FL + FedProx | Non-IID robustness |
+| FL + DP-SGD | Privacy-performance tradeoff |
+| FL + Byzantine defense | Malicious-client robustness |
+| FL + fine-tuning | Personalized federation |
+
+## Walk-Forward Windows
+
+| Window | Train | Validation | Test |
+|---|---|---|---|
+| 1 | 2014-2018 | 2018-2019 | 2019 |
+| 2 | 2014-2019 | 2019-2020 | 2020 |
+| 3 | 2014-2020 | 2020-2021 | 2021 |
+| 4 | 2014-2021 | 2021-2022 | 2022 |
+| 5 | 2014-2022 | 2022-2023 | 2023-2025 |
+
+## Experiment Matrix
+
+The main report should include:
+
+- Sharpe, Sortino, Calmar, max drawdown, alpha, beta, tracking error.
+- Lo-style Sharpe significance test.
+- Block bootstrap confidence intervals.
+- Performance by market regime.
+- Epsilon-vs-Sharpe curve for DP-SGD.
+- Communication reduction from top-k sparsification.
+- Byzantine attack simulation with FedAvg vs trimmed mean/Krum.
+
+## Anti-Leakage Rules
+
+- Features at date `t` may use only information available at or before `t`.
+- Labels are forward returns from `t+1` to `t+horizon`.
+- Scalers, imputers, model selection, and HMM regimes must be fitted inside each training window.
+- Test windows are never used for hyperparameter selection.
+- Transaction costs are applied to weight changes, not final weights.

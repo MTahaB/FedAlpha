@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+  fl_server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - FL_NUM_ROUNDS=10
+
+  institution_a:
+    build:
+      context: .
+      dockerfile: clients/institution_a/Dockerfile
+    volumes:
+      - ./data/client_partitions/tech:/data:ro
+    environment:
+      - CLIENT_ID=A
+      - TARGET_EPSILON=1.0
+      - SERVER_HOST=fl_server
+    depends_on:
+      - fl_server
+
+  institution_b:
+    build:
+      context: .
+      dockerfile: clients/institution_b/Dockerfile
+    volumes:
+      - ./data/client_partitions/finance:/data:ro
+    environment:
+      - CLIENT_ID=B
+      - TARGET_EPSILON=1.0
+      - SERVER_HOST=fl_server
+    depends_on:
+      - fl_server
+
+  institution_c:
+    build:
+      context: .
+      dockerfile: clients/institution_c/Dockerfile
+    volumes:
+      - ./data/client_partitions/healthcare_industrials:/data:ro
+    environment:
+      - CLIENT_ID=C
+      - TARGET_EPSILON=1.0
+      - SERVER_HOST=fl_server
+    depends_on:
+      - fl_server
+
+  blockchain_node:
+    image: trufflesuite/ganache:latest
+    ports:
+      - "8545:8545"
+
+  oracle_api:
+    build:
+      context: .
+      dockerfile: oracle/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/test_locked:/data/test:ro
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    command: mlflow server --host 0.0.0.0 --port 5000
+    ports:
+      - "5000:5000"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    ports:
+      - "8501:8501"
+    depends_on:
+      - oracle_api
+      - blockchain_node
