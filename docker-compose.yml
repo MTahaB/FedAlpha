@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   fl_server:
     build:
@@ -50,7 +48,9 @@ services:
       - fl_server
 
   blockchain_node:
-    image: trufflesuite/ganache:latest
+    build:
+      context: .
+      dockerfile: blockchain/Dockerfile.ganache
     ports:
       - "8545:8545"
 
@@ -64,8 +64,9 @@ services:
       - ./data/test_locked:/data/test:ro
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:latest
-    command: mlflow server --host 0.0.0.0 --port 5000
+    build:
+      context: .
+      dockerfile: mlflow_server/Dockerfile
     ports:
       - "5000:5000"
 

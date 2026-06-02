@@ -35,12 +35,27 @@ Create an environment with Python 3.11 or newer:
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -r requirements-optional.txt
 ```
 
 Run the core tests:
 
 ```bash
 python -m pytest
+```
+
+Run the full local verification probe:
+
+```bash
+python scripts/verify_project.py --pytest --docker --hardhat
+```
+
+This reports runnable checks as `PASS` and missing local infrastructure, such as Docker Desktop or npm, as `BLOCKED`.
+
+Compile the Solidity contracts without npm:
+
+```bash
+python scripts/verify_blockchain_compile.py --install-solc
 ```
 
 Download market data:
@@ -65,6 +80,24 @@ Launch the dashboard:
 
 ```bash
 streamlit run dashboard/app.py
+```
+
+The dashboard opens on the `Verification` tab first, with status checks for Python, data, oracle, blockchain, Docker, and Hardhat.
+
+If Docker Desktop is installed:
+
+```bash
+docker compose config
+docker compose build
+docker compose up
+```
+
+If npm is installed:
+
+```bash
+cd blockchain
+npm install
+npm test
 ```
 
 ## Implementation Order

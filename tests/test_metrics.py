@@ -16,3 +16,9 @@ def test_compute_max_drawdown():
 def test_sharpe_significance_shape():
     result = sharpe_significance_test(np.repeat(0.001, 30) + np.linspace(-0.0001, 0.0001, 30))
     assert {"sharpe", "ci_lower", "ci_upper", "p_value", "significant"}.issubset(result)
+
+
+def test_sharpe_significance_detects_strong_positive_series():
+    returns = np.array([0.001 + ((i % 5) - 2) * 0.0001 for i in range(260)])
+    result = sharpe_significance_test(returns, confidence=0.90)
+    assert result["significant"] is True

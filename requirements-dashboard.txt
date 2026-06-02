@@ -1,0 +1,7 @@
+numpy>=1.26
+pandas>=2.1
+fastapi>=0.110
+httpx2>=2.3
+py-solc-x>=2.0
+plotly>=5.18
+streamlit>=1.31

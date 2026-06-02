@@ -76,14 +76,22 @@ def sharpe_significance_test(
     if len(r) < 3:
         raise ValueError("At least 3 returns are required.")
 
-    sharpe = compute_sharpe(r)
+    daily_std = r.std(ddof=1)
+    if daily_std == 0 or np.isnan(daily_std):
+        raise ValueError("Sharpe significance requires non-constant returns.")
+
+    daily_sharpe = float(r.mean() / daily_std)
+    sharpe = daily_sharpe * np.sqrt(TRADING_DAYS)
     autocorr = r.autocorr(lag=1)
     if np.isnan(autocorr):
         autocorr = 0.0
 
-    var_sharpe = max((1 / len(r)) * (1 + 0.5 * sharpe**2 - autocorr * sharpe**2), 1e-12)
-    se_sharpe = np.sqrt(var_sharpe) * np.sqrt(TRADING_DAYS)
-    t_stat = sharpe / se_sharpe
+    var_daily_sharpe = max(
+        (1 / len(r)) * (1 + 0.5 * daily_sharpe**2 - autocorr * daily_sharpe**2),
+        1e-12,
+    )
+    se_sharpe = np.sqrt(var_daily_sharpe) * np.sqrt(TRADING_DAYS)
+    t_stat = daily_sharpe / np.sqrt(var_daily_sharpe)
     norm = NormalDist()
     p_value = 2 * (1 - norm.cdf(abs(t_stat)))
     z = norm.inv_cdf(1 - (1 - confidence) / 2)

@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest_tmp*/
 .ruff_cache/
 .mypy_cache/
 .ipynb_checkpoints/
@@ -15,6 +16,9 @@ data/test_locked/
 reports/*.png
 reports/*.csv
 reports/*.pdf
+docker/ganache-cache-seed/
+docker/npm-cache/*
+!docker/npm-cache/.gitkeep
 blockchain/node_modules/
 blockchain/cache/
 blockchain/artifacts/

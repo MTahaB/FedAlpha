@@ -1,0 +1,5 @@
+FROM node:24-slim
+
+COPY docker/npm-cache /npm-cache
+RUN npm install -g ganache --prefer-offline --cache /npm-cache
+CMD ["ganache", "--host", "0.0.0.0"]
