@@ -6,7 +6,9 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .ipynb_checkpoints/
+.tools/
 mlruns/
+mlflow.db
 artifacts/
 models/
 data/raw/
