@@ -1,0 +1,11 @@
+[
+  {
+    "round_id": 1,
+    "model_hash": "0x59e521d1579f6fe977590d48324b60daac7e31cf2e090871faa2c5935d4f2aaa",
+    "validation_score": 100,
+    "validated": true,
+    "validation_timestamp": "2026-06-03T20:19:22.202972+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  }
+]

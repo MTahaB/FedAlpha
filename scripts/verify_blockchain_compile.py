@@ -26,6 +26,10 @@ def main() -> int:
         [
             str(ROOT / "blockchain/contracts/FedAlphaGovernance.sol"),
             str(ROOT / "blockchain/contracts/FedAlphaDAO.sol"),
+            str(ROOT / "blockchain/contracts/FedRegistry.sol"),
+            str(ROOT / "blockchain/contracts/FedAlphaStaking.sol"),
+            str(ROOT / "blockchain/contracts/MultiSigOracle.sol"),
+            str(ROOT / "blockchain/contracts/SlashingManager.sol"),
             str(ROOT / "blockchain/contracts/RewardManager.sol"),
         ],
         solc_version="0.8.24",

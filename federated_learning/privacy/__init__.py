@@ -1,3 +1,9 @@
-from federated_learning.privacy.dp_sgd import clip_and_add_noise
+from federated_learning.privacy.dp_sgd import add_local_dp_noise, clip_and_add_noise, clip_model_update
+from federated_learning.privacy.dp_sgd import estimate_local_dp_epsilon
 
-__all__ = ["clip_and_add_noise"]
+__all__ = [
+    "add_local_dp_noise",
+    "clip_and_add_noise",
+    "clip_model_update",
+    "estimate_local_dp_epsilon",
+]

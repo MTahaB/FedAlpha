@@ -2,3 +2,6 @@
 # pandas-ta currently requires Python >=3.12 on the package index used in this environment,
 # while the Docker images intentionally run Python 3.11.
 pandas-ta>=0.4.71b0; python_version >= "3.12"
+lightgbm>=4.3
+xgboost>=2.0
+lxml>=5.2

@@ -2,33 +2,16 @@ from __future__ import annotations
 
 import numpy as np
 
-
-ArrayLikeTree = list[np.ndarray] | tuple[np.ndarray, ...]
-
-
-def _as_layers(update: np.ndarray | ArrayLikeTree) -> list[np.ndarray]:
-    if isinstance(update, np.ndarray):
-        return [update]
-    return [np.asarray(layer, dtype=float) for layer in update]
+from federated_learning.aggregation.common import ArrayTree, normalize_weights, validate_layer_sets
 
 
 def fedavg(
-    updates: list[np.ndarray | ArrayLikeTree],
+    updates: list[np.ndarray | ArrayTree],
     weights: list[float] | None = None,
 ) -> list[np.ndarray]:
-    if not updates:
-        raise ValueError("updates cannot be empty.")
-
-    layers = [_as_layers(update) for update in updates]
+    layers = validate_layer_sets(updates)
     n_layers = len(layers[0])
-    if any(len(layer_set) != n_layers for layer_set in layers):
-        raise ValueError("All updates must have the same number of layers.")
-
-    if weights is None:
-        weights_array = np.ones(len(updates), dtype=float) / len(updates)
-    else:
-        weights_array = np.asarray(weights, dtype=float)
-        weights_array = weights_array / weights_array.sum()
+    weights_array = normalize_weights(weights, len(updates))
 
     aggregated = []
     for layer_idx in range(n_layers):

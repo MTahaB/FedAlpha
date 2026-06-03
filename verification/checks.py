@@ -120,10 +120,16 @@ def blockchain_file_check() -> CheckResult:
     required = [
         "blockchain/contracts/FedAlphaGovernance.sol",
         "blockchain/contracts/FedAlphaDAO.sol",
+        "blockchain/contracts/FedRegistry.sol",
+        "blockchain/contracts/FedAlphaStaking.sol",
+        "blockchain/contracts/MultiSigOracle.sol",
+        "blockchain/contracts/SlashingManager.sol",
         "blockchain/contracts/RewardManager.sol",
         "blockchain/hardhat.config.js",
         "blockchain/package.json",
         "blockchain/tests/governance.test.js",
+        "blockchain/tests/registry_staking.test.js",
+        "blockchain/tests/multisig_oracle.test.js",
     ]
     missing = [path for path in required if not (ROOT / path).exists()]
     if missing:
@@ -134,6 +140,10 @@ def blockchain_file_check() -> CheckResult:
 def blockchain_static_check() -> CheckResult:
     governance = (ROOT / "blockchain/contracts/FedAlphaGovernance.sol").read_text(encoding="utf-8")
     dao = (ROOT / "blockchain/contracts/FedAlphaDAO.sol").read_text(encoding="utf-8")
+    registry = (ROOT / "blockchain/contracts/FedRegistry.sol").read_text(encoding="utf-8")
+    staking = (ROOT / "blockchain/contracts/FedAlphaStaking.sol").read_text(encoding="utf-8")
+    multi_sig_oracle = (ROOT / "blockchain/contracts/MultiSigOracle.sol").read_text(encoding="utf-8")
+    slashing_manager = (ROOT / "blockchain/contracts/SlashingManager.sol").read_text(encoding="utf-8")
     required_tokens = [
         "function stake()",
         "function slash(",
@@ -144,12 +154,30 @@ def blockchain_static_check() -> CheckResult:
         "function propose(",
         "function vote(",
         "function execute(",
+        "function submitModelHash(",
+        "function submitModelCheckpoint(",
+        "function anchorCheckpoint(",
+        "function verifyRound(",
+        "mapping(uint256 => bytes32[])",
+        "function deposit()",
+        "function withdraw(",
+        "function canParticipate(",
+        "function joinRound(",
+        "function submitValidation(",
+        "function verifyRegistryRound(",
+        "function slashInvalidModel(",
     ]
-    haystack = governance + "\n" + dao
+    haystack = governance + "\n" + dao + "\n" + registry + "\n" + staking
+    haystack += "\n" + multi_sig_oracle + "\n" + slashing_manager
     missing = [token for token in required_tokens if token not in haystack]
     if missing:
         return CheckResult("blockchain", "contract surface", "fail", f"missing: {', '.join(missing)}")
-    return CheckResult("blockchain", "contract surface", "pass", "staking, slashing, rewards, DAO votes present")
+    return CheckResult(
+        "blockchain",
+        "contract surface",
+        "pass",
+        "staking, registry, slashing, rewards, DAO votes present",
+    )
 
 
 def blockchain_solidity_compile_check() -> CheckResult:
@@ -167,6 +195,10 @@ def blockchain_solidity_compile_check() -> CheckResult:
             [
                 str(ROOT / "blockchain/contracts/FedAlphaGovernance.sol"),
                 str(ROOT / "blockchain/contracts/FedAlphaDAO.sol"),
+                str(ROOT / "blockchain/contracts/FedRegistry.sol"),
+                str(ROOT / "blockchain/contracts/FedAlphaStaking.sol"),
+                str(ROOT / "blockchain/contracts/MultiSigOracle.sol"),
+                str(ROOT / "blockchain/contracts/SlashingManager.sol"),
                 str(ROOT / "blockchain/contracts/RewardManager.sol"),
             ],
             solc_version="0.8.24",

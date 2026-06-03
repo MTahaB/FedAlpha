@@ -3,11 +3,13 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from dashboard.results import load_dashboard_results, participant_rows
 from verification.checks import collect_status, status_counts
 
 
 st.set_page_config(page_title="FedAlpha v2", layout="wide")
 st.title("FedAlpha v2")
+results = load_dashboard_results()
 
 def render_verification() -> None:
     if "verify_pytest" not in st.session_state:
@@ -53,10 +55,17 @@ def render_verification() -> None:
 
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Round", "0")
-col2.metric("Model Sharpe", "pending")
-col3.metric("Oracle verdict", "pending")
-col4.metric("Privacy epsilon", "pending")
+metrics = results["metrics"]
+oracle = results["oracle"]
+privacy = results["privacy"]
+latest_epsilon = "pending"
+if not privacy.empty and "epsilon" in privacy:
+    latest_epsilon = f"{privacy['epsilon'].replace([float('inf')], pd.NA).dropna().min():.2f}"
+
+col1.metric("Round", str(results["round"]))
+col2.metric("Model Sharpe", f"{metrics.get('sharpe_ratio', 'pending'):.3f}" if "sharpe_ratio" in metrics else "pending")
+col3.metric("Oracle verdict", str(oracle.get("validated", "pending")))
+col4.metric("Privacy epsilon", latest_epsilon)
 
 tabs = st.tabs(["Verification", "Training", "Backtest", "Privacy", "Oracle", "Governance"])
 
@@ -65,29 +74,38 @@ with tabs[0]:
 
 with tabs[1]:
     st.subheader("Flower convergence")
-    st.line_chart(pd.DataFrame({"loss": []}))
+    training = results["training"]
+    if training.empty:
+        st.info("No federated training report found yet.")
+    else:
+        st.line_chart(training, x="client", y="loss")
 
 with tabs[2]:
     st.subheader("Backtest")
-    st.line_chart(pd.DataFrame({"FL": [], "S&P500": [], "Equal Weight": []}))
+    returns = results["returns"]
+    if returns.empty:
+        st.info("No backtest report found yet.")
+    else:
+        date_column = "date" if "date" in returns.columns else returns.columns[0]
+        value_column = "portfolio_return" if "portfolio_return" in returns.columns else returns.columns[-1]
+        returns["equity"] = (1 + returns[value_column].fillna(0.0)).cumprod()
+        st.line_chart(returns, x=date_column, y="equity")
+        st.json(metrics)
 
 with tabs[3]:
     st.subheader("Privacy-performance")
-    st.line_chart(pd.DataFrame({"epsilon": [], "sharpe": []}))
+    if privacy.empty:
+        st.info("No privacy tradeoff report found yet.")
+    else:
+        st.line_chart(privacy, x="epsilon", y="sharpe", color="mode")
 
 with tabs[4]:
     st.subheader("Oracle response")
-    st.json({"validated": None, "model_hash": None})
+    st.json(oracle or {"validated": None, "model_hash": None})
+    if results["blockchain_events"]:
+        st.subheader("Blockchain anchors")
+        st.dataframe(pd.DataFrame(results["blockchain_events"]), width="stretch", hide_index=True)
 
 with tabs[5]:
     st.subheader("Participants")
-    st.dataframe(
-        pd.DataFrame(
-            [
-                {"institution": "A", "stake": 0, "reputation": 100, "status": "pending"},
-                {"institution": "B", "stake": 0, "reputation": 100, "status": "pending"},
-                {"institution": "C", "stake": 0, "reputation": 100, "status": "pending"},
-            ]
-        ),
-        width="stretch",
-    )
+    st.dataframe(participant_rows(results), width="stretch", hide_index=True)

@@ -28,6 +28,7 @@ SP100_SAMPLE = [
     "XOM",
     "CVX",
 ]
+SP100_SOURCE_URL = "https://en.wikipedia.org/wiki/S%26P_100"
 
 
 FIELD_ALIASES = {
@@ -42,6 +43,29 @@ FIELD_ALIASES = {
 
 def _normalize(value: object) -> str:
     return str(value).strip().lower().replace(" ", "_")
+
+
+def _to_yfinance_ticker(ticker: object) -> str:
+    return str(ticker).strip().replace(".", "-")
+
+
+def load_sp100_tickers(source_url: str = SP100_SOURCE_URL) -> list[str]:
+    """Load the current S&P 100 ticker list, falling back to a bundled liquid sample."""
+    try:
+        tables = pd.read_html(source_url)
+    except Exception:
+        return SP100_SAMPLE
+
+    for table in tables:
+        normalized_columns = {_normalize(column): column for column in table.columns}
+        symbol_column = normalized_columns.get("symbol") or normalized_columns.get("ticker")
+        if symbol_column is None:
+            continue
+        tickers = [_to_yfinance_ticker(value) for value in table[symbol_column].dropna()]
+        tickers = [ticker for ticker in tickers if ticker and ticker.lower() != "nan"]
+        if len(tickers) >= 80:
+            return tickers
+    return SP100_SAMPLE
 
 
 def _ticker_and_field(first: object, second: object) -> tuple[str, str]:
@@ -110,7 +134,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    tickers = args.tickers or SP100_SAMPLE
+    tickers = args.tickers or load_sp100_tickers()
     path = download_yfinance(tickers, args.start, args.end, args.output_dir)
     print(f"Wrote {path}")
 

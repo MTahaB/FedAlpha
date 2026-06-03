@@ -1,6 +1,6 @@
 import pandas as pd
 
-from data.download import format_yfinance_ohlcv
+from data.download import format_yfinance_ohlcv, load_sp100_tickers
 from quant.data_loader import load_ohlcv_csv
 
 
@@ -19,3 +19,25 @@ def test_format_yfinance_ohlcv_roundtrip(tmp_path):
 
     assert loaded.index.names == ["date", "ticker"]
     assert loaded.loc[(pd.Timestamp("2024-01-02"), "AAPL"), "close"] == 10.5
+
+
+def test_load_sp100_tickers_reads_symbol_table(monkeypatch):
+    tickers = [f"T{i:03d}" for i in range(100)]
+
+    def fake_read_html(url):
+        return [pd.DataFrame({"Symbol": tickers})]
+
+    monkeypatch.setattr(pd, "read_html", fake_read_html)
+
+    assert load_sp100_tickers("https://example.test") == tickers
+
+
+def test_load_sp100_tickers_normalizes_yahoo_class_tickers(monkeypatch):
+    tickers = ["BRK.B", "BF.B", *[f"T{i:03d}" for i in range(98)]]
+
+    def fake_read_html(url):
+        return [pd.DataFrame({"Symbol": tickers})]
+
+    monkeypatch.setattr(pd, "read_html", fake_read_html)
+
+    assert load_sp100_tickers("https://example.test")[:2] == ["BRK-B", "BF-B"]

@@ -64,11 +64,14 @@ Download market data:
 python data/download.py --preset sp100 --start 2014-01-01 --end 2025-01-01
 ```
 
-Run the first offline experiment on synthetic data:
+Run the first local baseline experiment on real OHLCV data:
 
 ```bash
+python data/download.py --preset sp100 --start 2014-01-01 --end 2025-01-01
 python -m federated_learning.experiments.run_local_baselines
 ```
+
+Install `requirements-optional.txt` to enable the LightGBM and XGBoost baselines in addition to Ridge.
 
 Launch the oracle API:
 

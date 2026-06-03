@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from federated_learning.aggregation.common import ArrayTree, validate_layer_sets
 
 def trimmed_mean_aggregate(updates: list[np.ndarray], trim_ratio: float = 0.1) -> np.ndarray:
     if not 0 <= trim_ratio < 0.5:
@@ -18,11 +19,12 @@ def trimmed_mean_aggregate(updates: list[np.ndarray], trim_ratio: float = 0.1) -
 
 
 def trimmed_mean_layers(
-    updates: list[list[np.ndarray]],
+    updates: list[ArrayTree],
     trim_ratio: float = 0.1,
 ) -> list[np.ndarray]:
-    n_layers = len(updates[0])
+    layers = validate_layer_sets(updates)
+    n_layers = len(layers[0])
     return [
-        trimmed_mean_aggregate([client_update[layer_idx] for client_update in updates], trim_ratio)
+        trimmed_mean_aggregate([client_update[layer_idx] for client_update in layers], trim_ratio)
         for layer_idx in range(n_layers)
     ]

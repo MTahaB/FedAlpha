@@ -7,6 +7,8 @@ services:
       - "8080:8080"
     environment:
       - FL_NUM_ROUNDS=10
+      - FL_STRATEGY=fednova
+      - FL_ROBUST_AGGREGATOR=median
 
   institution_a:
     build:
@@ -18,6 +20,8 @@ services:
       - CLIENT_ID=A
       - TARGET_EPSILON=1.0
       - SERVER_HOST=fl_server
+      - LOCAL_DP_NOISE_MULTIPLIER=0.0
+      - MALICIOUS_ATTACK=none
     depends_on:
       - fl_server
 
@@ -31,6 +35,8 @@ services:
       - CLIENT_ID=B
       - TARGET_EPSILON=1.0
       - SERVER_HOST=fl_server
+      - LOCAL_DP_NOISE_MULTIPLIER=0.0
+      - MALICIOUS_ATTACK=none
     depends_on:
       - fl_server
 
@@ -44,6 +50,8 @@ services:
       - CLIENT_ID=C
       - TARGET_EPSILON=1.0
       - SERVER_HOST=fl_server
+      - LOCAL_DP_NOISE_MULTIPLIER=0.0
+      - MALICIOUS_ATTACK=none
     depends_on:
       - fl_server
 
@@ -76,6 +84,9 @@ services:
       dockerfile: dashboard/Dockerfile
     ports:
       - "8501:8501"
+    volumes:
+      - ./reports:/app/reports:ro
+      - ./models:/app/models:ro
     depends_on:
       - oracle_api
       - blockchain_node
