@@ -8,6 +8,8 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
+from quant.backtest import asset_return_panel, make_expanding_windows
+from quant.benchmarks import buy_and_hold_returns, equal_weight_returns, momentum_20d_long_short
 from data.download import download_yfinance, load_sp100_tickers
 from quant.backtest import backtest_predictions
 from quant.data_loader import load_ohlcv_csv
@@ -18,6 +20,7 @@ from quant.pipeline import chronological_split, market_return_series, prepare_su
 
 ModelFactory = Callable[[], object]
 DEFAULT_DATA_PATH = Path("data/raw/ohlcv.csv")
+DEFAULT_REPORTS_DIR = Path("reports")
 
 
 def load_research_ohlcv(
@@ -95,6 +98,135 @@ def run_baselines(
     return results
 
 
+def _slice_dates(frame: pd.DataFrame | pd.Series, start: str, end: str) -> pd.DataFrame | pd.Series:
+    index = pd.to_datetime(frame.index.get_level_values("date") if isinstance(frame.index, pd.MultiIndex) else frame.index)
+    return frame.loc[(index >= pd.Timestamp(start)) & (index < pd.Timestamp(end))]
+
+
+def _metrics_row(window: str, method: str, returns: pd.Series) -> dict[str, object]:
+    metrics = summarize_performance(returns)
+    return {
+        "window": window,
+        "method": method,
+        "status": "ok",
+        "n_returns": int(returns.dropna().shape[0]),
+        **metrics,
+    }
+
+
+def run_walk_forward_baselines(
+    ohlcv: pd.DataFrame,
+    model_names: list[str],
+    horizon: int = 5,
+) -> tuple[pd.DataFrame, dict[str, pd.Series]]:
+    """Run naive and ML baselines on the research walk-forward windows."""
+    dataset = prepare_supervised_dataset(ohlcv, horizon=horizon)
+    asset_returns = asset_return_panel(ohlcv)
+    market_close = ohlcv["close"].unstack("ticker").sort_index().mean(axis=1)
+
+    rows: list[dict[str, object]] = []
+    return_series: dict[str, pd.Series] = {}
+
+    for window in make_expanding_windows():
+        test_asset_returns = _slice_dates(asset_returns, window.test_start, window.test_end)
+        buy_hold = _slice_dates(buy_and_hold_returns(market_close), window.test_start, window.test_end)
+        equal_weight = equal_weight_returns(test_asset_returns).rename("equal_weight")
+        momentum = _slice_dates(
+            momentum_20d_long_short(_slice_dates(asset_returns, window.train_start, window.test_end)),
+            window.test_start,
+            window.test_end,
+        ).rename("momentum_20d")
+
+        for method, returns in {
+            "buy_hold": buy_hold,
+            "equal_weight": equal_weight,
+            "momentum_20d": momentum,
+        }.items():
+            rows.append(_metrics_row(window.name, method, returns))
+            return_series[f"{window.name}:{method}"] = returns
+
+        date_index = pd.to_datetime(dataset.features.index.get_level_values("date"))
+        train_mask = (date_index >= pd.Timestamp(window.train_start)) & (
+            date_index < pd.Timestamp(window.test_start)
+        )
+        test_mask = (date_index >= pd.Timestamp(window.test_start)) & (
+            date_index < pd.Timestamp(window.test_end)
+        )
+        x_train = dataset.features.loc[train_mask]
+        y_train = dataset.labels.loc[train_mask]
+        x_test = dataset.features.loc[test_mask]
+
+        if x_train.empty or x_test.empty:
+            for name in model_names:
+                rows.append(
+                    {
+                        "window": window.name,
+                        "method": name,
+                        "status": "skipped",
+                        "n_returns": 0,
+                        "reason": "empty train or test split",
+                    }
+                )
+            continue
+
+        for name, factory in baseline_factories(model_names).items():
+            model = factory()
+            try:
+                model.fit(x_train.to_numpy(), y_train.to_numpy())
+                predictions = pd.Series(model.predict(x_test.to_numpy()), index=x_test.index, name=name)
+                returns = backtest_predictions(predictions, ohlcv)
+            except OptionalDependencyMissing as exc:
+                rows.append(
+                    {
+                        "window": window.name,
+                        "method": name,
+                        "status": "skipped",
+                        "n_returns": 0,
+                        "reason": str(exc),
+                    }
+                )
+                continue
+            rows.append(_metrics_row(window.name, name, returns))
+            return_series[f"{window.name}:{name}"] = returns.rename(name)
+
+    return pd.DataFrame(rows), return_series
+
+
+def write_baseline_reports(
+    summary: pd.DataFrame,
+    return_series: dict[str, pd.Series],
+    reports_dir: Path = DEFAULT_REPORTS_DIR,
+) -> dict[str, Path]:
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    paths: dict[str, Path] = {
+        "summary_csv": reports_dir / "baselines_summary.csv",
+        "summary_json": reports_dir / "baselines_summary.json",
+    }
+    summary.to_csv(paths["summary_csv"], index=False)
+    paths["summary_json"].write_text(
+        json.dumps(summary.replace({np.nan: None}).to_dict(orient="records"), indent=2, default=float),
+        encoding="utf-8",
+    )
+
+    for idx, window in enumerate(make_expanding_windows(), start=1):
+        window_summary = summary[summary["window"] == window.name]
+        path = reports_dir / f"baselines_window_{idx}.csv"
+        window_summary.to_csv(path, index=False)
+        paths[f"window_{idx}"] = path
+
+        window_returns = {
+            key.split(":", 1)[1]: series
+            for key, series in return_series.items()
+            if key.startswith(f"{window.name}:")
+        }
+        if window_returns:
+            returns_path = reports_dir / f"baselines_window_{idx}_returns.csv"
+            pd.concat(window_returns, axis=1).to_csv(returns_path)
+            paths[f"window_{idx}_returns"] = returns_path
+
+    return paths
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run local non-FL baselines on real OHLCV data.")
     parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH)
@@ -104,6 +236,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-start", default=None)
     parser.add_argument("--no-download", action="store_true")
     parser.add_argument("--models", nargs="+", default=["ridge", "lightgbm", "xgboost"])
+    parser.add_argument("--reports-dir", type=Path, default=DEFAULT_REPORTS_DIR)
+    parser.add_argument("--single-split", action="store_true")
     return parser.parse_args()
 
 
@@ -115,13 +249,23 @@ def main() -> None:
         start=args.start,
         end=args.end,
     )
-    results = run_baselines(
+    if args.single_split:
+        results = run_baselines(
+            ohlcv,
+            model_names=args.models,
+            horizon=args.horizon,
+            test_start=args.test_start,
+        )
+        print(json.dumps(results, indent=2, default=float))
+        return
+
+    summary, return_series = run_walk_forward_baselines(
         ohlcv,
         model_names=args.models,
         horizon=args.horizon,
-        test_start=args.test_start,
     )
-    print(json.dumps(results, indent=2, default=float))
+    paths = write_baseline_reports(summary, return_series, reports_dir=args.reports_dir)
+    print(json.dumps({"summary": summary.to_dict(orient="records"), "paths": paths}, indent=2, default=str))
 
 
 if __name__ == "__main__":

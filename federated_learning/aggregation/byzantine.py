@@ -11,16 +11,22 @@ def simulate_byzantine_updates(
     attack: str = "sign_flip",
     scale: float = 10.0,
     seed: int | None = None,
+    malicious_indices: list[int] | None = None,
 ) -> list[list[np.ndarray]]:
     if malicious_clients < 0:
         raise ValueError("malicious_clients must be non-negative.")
     if malicious_clients > len(updates):
         raise ValueError("malicious_clients cannot exceed number of updates.")
+    if malicious_indices is not None:
+        if len(malicious_indices) != malicious_clients:
+            raise ValueError("malicious_indices length must match malicious_clients.")
+        if any(idx < 0 or idx >= len(updates) for idx in malicious_indices):
+            raise ValueError("malicious_indices contains an out-of-range client index.")
 
     layers = validate_layer_sets(updates)
     rng = np.random.default_rng(seed)
     poisoned = [[layer.copy() for layer in client_layers] for client_layers in layers]
-    malicious_indices = list(range(malicious_clients))
+    malicious_indices = malicious_indices or list(range(malicious_clients))
 
     for idx in malicious_indices:
         if attack == "sign_flip":

@@ -7,5 +7,77 @@
     "validation_timestamp": "2026-06-03T20:19:22.202972+00:00",
     "tx_hash": null,
     "mode": "file"
+  },
+  {
+    "round_id": 2,
+    "model_hash": "0x577b9bafd596ce2d6ebc9b0dca938dac66e339b3875696c5c9269da283c00aba",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:02:21.606598+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  },
+  {
+    "round_id": 10,
+    "model_hash": "0x6fa6ed4e91197ddbfb775c0db045bb9d20e8346e07b70c617129b1e1083bcd84",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:04:59.295649+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  },
+  {
+    "round_id": 11,
+    "model_hash": "0x444cde6b5c6a1f796ba2933a5270704006d8f482645b402e5c7562cc6f542de9",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:05:03.970749+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  },
+  {
+    "round_id": 12,
+    "model_hash": "0xe42fc905f5c9c18638813ca4ff34b114e2e6df999f87d4f91322063de3980e50",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:28:42.211100+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  },
+  {
+    "round_id": 10,
+    "model_hash": "0x93d726ddb579b096ebf75529b76781d54f3da00f99a7b5902d9afb81239c7f79",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:29:08.186641+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  },
+  {
+    "round_id": 11,
+    "model_hash": "0x767e43bd6062cfdde2eefda2b6ccb40b8ace5efc43ad8bb184df1be4b798aaf2",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:29:20.298518+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  },
+  {
+    "round_id": 10,
+    "model_hash": "0x93d726ddb579b096ebf75529b76781d54f3da00f99a7b5902d9afb81239c7f79",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:30:14.526882+00:00",
+    "tx_hash": null,
+    "mode": "file"
+  },
+  {
+    "round_id": 11,
+    "model_hash": "0x767e43bd6062cfdde2eefda2b6ccb40b8ace5efc43ad8bb184df1be4b798aaf2",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T21:30:25.560932+00:00",
+    "tx_hash": null,
+    "mode": "file"
   }
 ]

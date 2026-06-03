@@ -5,6 +5,7 @@ from federated_learning.experiments.run_local_baselines import (
     chronological_split,
     prepare_supervised_frame,
     run_baselines,
+    write_baseline_reports,
 )
 
 
@@ -54,3 +55,31 @@ def test_run_baselines_runs_ridge_on_real_panel():
     assert results["ridge"]["status"] == "ok"
     assert results["ridge"]["n_train"] > 0
     assert "sharpe_ratio" in results["ridge"]["metrics"]
+
+
+def test_write_baseline_reports_materializes_summary_and_windows(tmp_path):
+    summary = pd.DataFrame(
+        [
+            {
+                "window": "wf_2019",
+                "method": "ridge",
+                "status": "ok",
+                "n_returns": 10,
+                "sharpe_ratio": 1.2,
+            }
+        ]
+    )
+    returns = {
+        "wf_2019:ridge": pd.Series(
+            [0.01, -0.005],
+            index=pd.bdate_range("2019-01-01", periods=2),
+            name="ridge",
+        )
+    }
+
+    paths = write_baseline_reports(summary, returns, reports_dir=tmp_path)
+
+    assert paths["summary_csv"].exists()
+    assert paths["summary_json"].exists()
+    assert (tmp_path / "baselines_window_1.csv").exists()
+    assert (tmp_path / "baselines_window_1_returns.csv").exists()

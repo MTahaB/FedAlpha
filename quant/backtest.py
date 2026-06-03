@@ -52,7 +52,7 @@ def predictions_to_weight_panel(
 
 
 def asset_return_panel(ohlcv: pd.DataFrame) -> pd.DataFrame:
-    returns = ohlcv["close"].groupby(level="ticker").pct_change()
+    returns = ohlcv["close"].groupby(level="ticker").pct_change(fill_method=None)
     return returns.unstack("ticker").sort_index()
 
 

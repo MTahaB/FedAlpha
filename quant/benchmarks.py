@@ -6,7 +6,7 @@ from quant.strategy import portfolio_returns
 
 
 def buy_and_hold_returns(benchmark_close: pd.Series) -> pd.Series:
-    return benchmark_close.sort_index().pct_change().dropna().rename("buy_and_hold")
+    return benchmark_close.sort_index().pct_change(fill_method=None).dropna().rename("buy_and_hold")
 
 
 def equal_weight_returns(asset_returns: pd.DataFrame) -> pd.Series:

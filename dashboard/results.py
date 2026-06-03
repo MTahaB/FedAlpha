@@ -31,6 +31,8 @@ def load_dashboard_results(report_dir: str | Path = "reports") -> dict:
     training = _read_csv(root / "federated_training_history.csv")
     returns = _read_csv(root / "federated_returns.csv")
     privacy = _read_csv(root / "privacy_tradeoff.csv")
+    baselines = _read_csv(root / "baselines_summary.csv")
+    byzantine = _read_csv(root / "byzantine_comparison.csv")
     blockchain_events = _read_json(root / "blockchain_events.json") if (root / "blockchain_events.json").exists() else []
 
     latest_round = 0
@@ -44,6 +46,8 @@ def load_dashboard_results(report_dir: str | Path = "reports") -> dict:
         "training": training,
         "returns": returns,
         "privacy": privacy,
+        "baselines": baselines,
+        "byzantine": byzantine,
         "blockchain_events": blockchain_events,
     }
 

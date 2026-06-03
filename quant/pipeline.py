@@ -37,7 +37,7 @@ class LocalTrainingResult:
 
 def market_return_series(ohlcv: pd.DataFrame) -> pd.Series:
     close = ohlcv["close"].unstack("ticker").sort_index()
-    return close.pct_change().mean(axis=1).rename("market_return")
+    return close.pct_change(fill_method=None).mean(axis=1).rename("market_return")
 
 
 def prepare_supervised_dataset(

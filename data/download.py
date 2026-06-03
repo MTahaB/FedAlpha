@@ -1,34 +1,230 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import pandas as pd
 
+if __package__ in {None, ""}:
+    sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from quant.data_loader import load_ohlcv_csv, save_client_partitions
+
 
 SP100_SAMPLE = [
     "AAPL",
-    "MSFT",
-    "NVDA",
+    "ABBV",
+    "ABT",
+    "ACN",
+    "ADBE",
+    "AMAT",
+    "AMD",
+    "AMGN",
+    "AMT",
     "AMZN",
-    "META",
-    "GOOGL",
-    "JPM",
-    "BAC",
-    "GS",
-    "MS",
-    "JNJ",
-    "UNH",
-    "PFE",
-    "MRK",
-    "CAT",
-    "GE",
-    "HON",
+    "AVGO",
+    "AXP",
     "BA",
-    "XOM",
+    "BAC",
+    "BKNG",
+    "BLK",
+    "BMY",
+    "BNY",
+    "BRK-B",
+    "C",
+    "CAT",
+    "CL",
+    "CMCSA",
+    "COF",
+    "COP",
+    "COST",
+    "CRM",
+    "CSCO",
+    "CVS",
     "CVX",
+    "DE",
+    "DHR",
+    "DIS",
+    "DUK",
+    "EMR",
+    "FDX",
+    "GD",
+    "GE",
+    "GEV",
+    "GILD",
+    "GM",
+    "GOOG",
+    "GOOGL",
+    "GS",
+    "HD",
+    "HON",
+    "IBM",
+    "INTC",
+    "INTU",
+    "ISRG",
+    "JNJ",
+    "JPM",
+    "KO",
+    "LIN",
+    "LLY",
+    "LMT",
+    "LOW",
+    "LRCX",
+    "MA",
+    "MCD",
+    "MDLZ",
+    "MDT",
+    "META",
+    "MMM",
+    "MO",
+    "MRK",
+    "MS",
+    "MSFT",
+    "MU",
+    "NEE",
+    "NFLX",
+    "NKE",
+    "NOW",
+    "NVDA",
+    "ORCL",
+    "PEP",
+    "PFE",
+    "PG",
+    "PLTR",
+    "PM",
+    "QCOM",
+    "RTX",
+    "SBUX",
+    "SCHW",
+    "SO",
+    "SPG",
+    "T",
+    "TMO",
+    "TMUS",
+    "TSLA",
+    "TXN",
+    "UBER",
+    "UNH",
+    "UNP",
+    "UPS",
+    "USB",
+    "V",
+    "VZ",
+    "WFC",
+    "WMT",
+    "XOM",
 ]
 SP100_SOURCE_URL = "https://en.wikipedia.org/wiki/S%26P_100"
+DEFAULT_CLIENT_GROUPS = {
+    "tech": [
+        "AAPL",
+        "ACN",
+        "ADBE",
+        "AMAT",
+        "AMD",
+        "AMZN",
+        "AVGO",
+        "CRM",
+        "CSCO",
+        "GOOG",
+        "GOOGL",
+        "IBM",
+        "INTC",
+        "INTU",
+        "LRCX",
+        "META",
+        "MSFT",
+        "MU",
+        "NFLX",
+        "NOW",
+        "NVDA",
+        "ORCL",
+        "PLTR",
+        "QCOM",
+        "TXN",
+    ],
+    "finance": [
+        "AXP",
+        "BAC",
+        "BLK",
+        "BNY",
+        "BRK-B",
+        "C",
+        "COF",
+        "GS",
+        "JPM",
+        "MA",
+        "MS",
+        "SCHW",
+        "USB",
+        "V",
+        "WFC",
+    ],
+    "healthcare_industrials": [
+        "ABBV",
+        "ABT",
+        "AMGN",
+        "AMT",
+        "BA",
+        "BKNG",
+        "BMY",
+        "CAT",
+        "CL",
+        "CMCSA",
+        "COP",
+        "COST",
+        "CVS",
+        "CVX",
+        "DE",
+        "DHR",
+        "DIS",
+        "DUK",
+        "EMR",
+        "FDX",
+        "GD",
+        "GE",
+        "GEV",
+        "GILD",
+        "GM",
+        "HD",
+        "HON",
+        "ISRG",
+        "JNJ",
+        "KO",
+        "LIN",
+        "LLY",
+        "LMT",
+        "LOW",
+        "MCD",
+        "MDLZ",
+        "MDT",
+        "MMM",
+        "MO",
+        "MRK",
+        "NEE",
+        "NKE",
+        "PEP",
+        "PFE",
+        "PG",
+        "PM",
+        "RTX",
+        "SBUX",
+        "SO",
+        "SPG",
+        "T",
+        "TMO",
+        "TMUS",
+        "TSLA",
+        "UBER",
+        "UNH",
+        "UNP",
+        "UPS",
+        "VZ",
+        "WMT",
+        "XOM",
+    ],
+}
 
 
 FIELD_ALIASES = {
@@ -116,10 +312,30 @@ def download_yfinance(tickers: list[str], start: str, end: str, output_dir: Path
         raise RuntimeError("Install yfinance with `pip install -r requirements.txt`.") from exc
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    if hasattr(yf, "set_tz_cache_location"):
+        cache_dir = output_dir / "yfinance_cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        yf.set_tz_cache_location(str(cache_dir))
     path = output_dir / "ohlcv.csv"
     frame = yf.download(tickers, start=start, end=end, auto_adjust=False, group_by="ticker")
     format_yfinance_ohlcv(frame, tickers).to_csv(path, index=False)
     return path
+
+
+def write_default_client_partitions(
+    data_path: Path,
+    output_dir: Path = Path("data/client_partitions"),
+) -> dict[str, Path]:
+    ohlcv = load_ohlcv_csv(data_path)
+    available = set(ohlcv.index.get_level_values("ticker"))
+    groups = {
+        name: [ticker for ticker in tickers if ticker in available]
+        for name, tickers in DEFAULT_CLIENT_GROUPS.items()
+    }
+    groups = {name: tickers for name, tickers in groups.items() if tickers}
+    if not groups:
+        raise ValueError("No default client partition tickers are available in the downloaded data.")
+    return save_client_partitions(ohlcv, groups, output_dir)
 
 
 def parse_args() -> argparse.Namespace:
@@ -129,6 +345,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start", default="2014-01-01")
     parser.add_argument("--end", default="2025-01-01")
     parser.add_argument("--output-dir", type=Path, default=Path("data/raw"))
+    parser.add_argument("--client-partitions-dir", type=Path, default=Path("data/client_partitions"))
+    parser.add_argument("--skip-client-partitions", action="store_true")
     return parser.parse_args()
 
 
@@ -137,6 +355,10 @@ def main() -> None:
     tickers = args.tickers or load_sp100_tickers()
     path = download_yfinance(tickers, args.start, args.end, args.output_dir)
     print(f"Wrote {path}")
+    if not args.skip_client_partitions:
+        partitions = write_default_client_partitions(path, args.client_partitions_dir)
+        for name, partition_path in partitions.items():
+            print(f"Wrote {name} partition: {partition_path}")
 
 
 if __name__ == "__main__":

@@ -85,6 +85,20 @@ def test_simulate_byzantine_updates_sign_flip():
     np.testing.assert_allclose(poisoned[1][0], np.array([2.0]))
 
 
+def test_simulate_byzantine_updates_targets_selected_client():
+    updates = [[np.array([1.0])], [np.array([2.0])], [np.array([3.0])]]
+    poisoned = simulate_byzantine_updates(
+        updates,
+        malicious_clients=1,
+        attack="sign_flip",
+        scale=5.0,
+        malicious_indices=[2],
+    )
+    np.testing.assert_allclose(poisoned[0][0], np.array([1.0]))
+    np.testing.assert_allclose(poisoned[1][0], np.array([2.0]))
+    np.testing.assert_allclose(poisoned[2][0], np.array([-15.0]))
+
+
 def test_secure_sum_masks_cancel():
     updates = [np.array([1.0, 2.0]), np.array([3.0, 4.0]), np.array([5.0, 6.0])]
     secure_sum, _ = simulate_secure_sum(updates, seed=1)

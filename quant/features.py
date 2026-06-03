@@ -26,11 +26,11 @@ def build_features(ohlcv: pd.DataFrame, market_returns: pd.Series | None = None)
     close = ohlcv["close"].astype(float)
     volume = ohlcv["volume"].astype(float).replace(0, np.nan)
 
-    returns = grouped["close"].pct_change()
+    returns = grouped["close"].pct_change(fill_method=None)
     out["return_1d"] = returns
     out["log_return_1d"] = np.log1p(returns)
-    out["momentum_5d"] = grouped["close"].pct_change(5)
-    out["momentum_20d"] = grouped["close"].pct_change(20)
+    out["momentum_5d"] = grouped["close"].pct_change(5, fill_method=None)
+    out["momentum_20d"] = grouped["close"].pct_change(20, fill_method=None)
     out["volatility_20d"] = returns.groupby(level="ticker", group_keys=False).rolling(20).std().droplevel(0)
     out["skewness_20d"] = returns.groupby(level="ticker", group_keys=False).rolling(20).skew().droplevel(0)
     out["dollar_volume"] = close * volume
