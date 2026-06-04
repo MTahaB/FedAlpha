@@ -13,6 +13,11 @@ from federated_learning.experiments.run_federated import (
     DEFAULT_PARTITIONS,
     _aggregate_ridge_states_for_fl,
 )
+from federated_learning.regime_aware import (
+    ClientContributionStats,
+    aggregate_regime_aware_ridge_states,
+    personalize_ridge_state,
+)
 from quant.backtest import (
     WalkForwardWindow,
     asset_return_panel,
@@ -626,6 +631,111 @@ def _fed_ridge_from_splits(
     return returns.rename(method), details, best
 
 
+def _dominant_regime(labels: pd.Series, start: str, end: str) -> str:
+    sliced = _date_slice(labels.dropna(), start, end)
+    if sliced.empty:
+        return "crisis"
+    return str(sliced.mode().iloc[0])
+
+
+def _regime_from_returns(returns: pd.Series) -> str:
+    metrics = summarize_performance(returns)
+    if metrics.get("max_drawdown", 0.0) < -0.20 or metrics.get("annual_volatility", 0.0) > 0.35:
+        return "crisis"
+    if metrics.get("annual_return", 0.0) >= 0:
+        return "bull"
+    return "bear"
+
+
+def _fedalpha_regime_aware_from_splits(
+    evaluation_ohlcv: pd.DataFrame,
+    x_val: pd.DataFrame,
+    x_test: pd.DataFrame,
+    validation_splits,
+    final_splits,
+    params_grid: list[StudyParams],
+    *,
+    current_regime: str,
+    local_blend: float = 0.25,
+) -> tuple[pd.Series, dict[str, float], StudyParams, pd.Series, dict[str, float], StudyParams]:
+    payload_cache: dict[float, list[tuple[str, dict, pd.Series, pd.DataFrame, int]]] = {}
+    stats_cache: dict[tuple[float, int, int], list[ClientContributionStats]] = {}
+
+    def validation_payload(alpha: float):
+        if alpha not in payload_cache:
+            payload_cache[alpha] = []
+            for idx, (ohlcv, x_train, x_val_client, y_train, _) in enumerate(validation_splits, start=1):
+                state = _fit_ridge_state(x_train, y_train, alpha)
+                predictions = _predict_state(state, x_val_client, f"client_{idx}")
+                payload_cache[alpha].append((f"client_{idx}", state, predictions, ohlcv, len(x_train)))
+        return payload_cache[alpha]
+
+    def validation_stats(params: StudyParams) -> list[ClientContributionStats]:
+        key = (params.alpha, params.top_k, params.bottom_k)
+        if key not in stats_cache:
+            rows = []
+            for client_id, _, predictions, ohlcv, n_examples in validation_payload(params.alpha):
+                returns, _ = _prediction_returns(predictions, ohlcv, params)
+                metrics = summarize_performance(returns)
+                rows.append(
+                    ClientContributionStats(
+                        client_id=client_id,
+                        n_examples=n_examples,
+                        validation_sharpe=float(metrics.get("sharpe_ratio", 0.0)),
+                        validation_volatility=float(metrics.get("annual_volatility", 0.0)),
+                        client_regime=_regime_from_returns(returns),
+                    )
+                )
+            stats_cache[key] = rows
+        return stats_cache[key]
+
+    def validation_score(params: StudyParams) -> float:
+        payload = validation_payload(params.alpha)
+        state = aggregate_regime_aware_ridge_states(
+            [item[1] for item in payload],
+            validation_stats(params),
+            current_regime=current_regime,
+        )
+        returns, _ = _prediction_returns(_predict_state(state, x_val, "fedalpha_regime_aware"), evaluation_ohlcv, params)
+        return _score(returns)
+
+    best = max(params_grid, key=validation_score)
+    final_states = []
+    personalized_returns = []
+    personalized_details = []
+    for idx, (ohlcv, x_train, x_test_client, y_train, _) in enumerate(final_splits, start=1):
+        local_state = _fit_ridge_state(x_train, y_train, best.alpha)
+        final_states.append(local_state)
+        # Personalized returns are computed after the global state is known.
+
+    global_state = aggregate_regime_aware_ridge_states(
+        final_states,
+        validation_stats(best),
+        current_regime=current_regime,
+    )
+    global_returns, global_details = _prediction_returns(
+        _predict_state(global_state, x_test, "FedAlpha Regime-Aware"),
+        evaluation_ohlcv,
+        best,
+    )
+
+    for local_state, (ohlcv, _, x_test_client, _, _) in zip(final_states, final_splits):
+        state = personalize_ridge_state(global_state, local_state, local_blend=local_blend)
+        returns, details = _prediction_returns(_predict_state(state, x_test_client, "FedAlpha Personalized"), ohlcv, best)
+        personalized_returns.append(returns)
+        personalized_details.append(details)
+
+    personalized = pd.concat(personalized_returns, axis=1).mean(axis=1).rename("FedAlpha Personalized")
+    return (
+        global_returns.rename("FedAlpha Regime-Aware"),
+        global_details,
+        best,
+        personalized,
+        _average_details(personalized_details),
+        best,
+    )
+
+
 def _average_details(rows: list[dict[str, float]]) -> dict[str, float]:
     if not rows:
         return {"turnover": float("nan"), "costs": float("nan")}
@@ -769,6 +879,7 @@ def _write_protocol_summary(reports_dir: Path) -> None:
 - Validation: alpha, top-k, and bottom-k are selected on the validation window only.
 - Final test: models are retrained on train plus validation before measuring the test window.
 - Regimes: the main study uses deterministic volatility-quantile regime features fitted on train returns only inside each walk-forward window; the HMM detector follows the same train-only contract and can be swapped in for slower runs.
+- FedAlpha contribution: regime-aware aggregation weights clients by sample size, validation Sharpe, current-regime compatibility, and validation volatility; the personalized variant shrinks the global Ridge model toward each local client model.
 - Purge: a five-session purge prevents forward-label overlap with validation and test windows.
 - Transaction costs: fixed plus market-impact costs are charged on turnover.
 
@@ -810,6 +921,8 @@ def run_full_research_study(
         "Local Ridge": [],
         "FedAvg": [],
         "Robust Aggregation": [],
+        "FedAlpha Regime-Aware": [],
+        "FedAlpha Personalized": [],
     }
     rows: list[dict[str, object]] = []
     regime_labels_by_window: dict[str, pd.Series] = {}
@@ -923,6 +1036,46 @@ def run_full_research_study(
             rows.append(_window_row(window, method, fed_returns, fed_params, fed_details, embargo_days=embargo_days))
             returns_by_method[method].append(fed_returns.rename(method))
 
+        current_regime = _dominant_regime(test_regime_labels, window.test_start, window.test_end)
+        (
+            fedalpha_returns,
+            fedalpha_details,
+            fedalpha_params,
+            personalized_returns,
+            personalized_details,
+            personalized_params,
+        ) = _fedalpha_regime_aware_from_splits(
+            ohlcv,
+            validation_split[1],
+            final_split[1],
+            client_validation_splits,
+            client_final_splits,
+            params_grid,
+            current_regime=current_regime,
+        )
+        rows.append(
+            _window_row(
+                window,
+                "FedAlpha Regime-Aware",
+                fedalpha_returns,
+                fedalpha_params,
+                fedalpha_details,
+                embargo_days=embargo_days,
+            )
+        )
+        rows.append(
+            _window_row(
+                window,
+                "FedAlpha Personalized",
+                personalized_returns,
+                personalized_params,
+                personalized_details,
+                embargo_days=embargo_days,
+            )
+        )
+        returns_by_method["FedAlpha Regime-Aware"].append(fedalpha_returns.rename("FedAlpha Regime-Aware"))
+        returns_by_method["FedAlpha Personalized"].append(personalized_returns.rename("FedAlpha Personalized"))
+
     all_returns = {
         method: pd.concat(series).sort_index().rename(method)
         for method, series in returns_by_method.items()
@@ -966,6 +1119,8 @@ def run_full_research_study(
         ("Local Ridge", "local_ridge_metrics.json"),
         ("FedAvg", "federated_metrics.json"),
         ("Robust Aggregation", "federated_robust_metrics.json"),
+        ("FedAlpha Regime-Aware", "fedalpha_regime_aware_metrics.json"),
+        ("FedAlpha Personalized", "fedalpha_personalized_metrics.json"),
     ]:
         (reports_dir / filename).write_text(
             json.dumps(summarize_performance(all_returns[method]), indent=2, default=float),

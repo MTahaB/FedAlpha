@@ -76,5 +76,31 @@
       "ci_high": 0.014500674040429675,
       "ci_width": 1.328187492072628
     }
+  },
+  "FedAlpha Regime-Aware": {
+    "lo_sharpe": {
+      "sharpe": -1.0486690416044835,
+      "z_stat": -29.078434105212125,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": -1.7611263389627585,
+      "ci_high": -0.3132609583409838,
+      "ci_width": 1.4478653806217747
+    }
+  },
+  "FedAlpha Personalized": {
+    "lo_sharpe": {
+      "sharpe": -0.9316330252357035,
+      "z_stat": -27.527251819042927,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": -1.6725260674478273,
+      "ci_high": -0.23196642480273627,
+      "ci_width": 1.440559642645091
+    }
   }
 }

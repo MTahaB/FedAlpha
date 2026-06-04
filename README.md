@@ -128,6 +128,8 @@ This regenerates the comparison summary, walk-forward window results, equity cur
 
 The current experiment uses today's S&P 100 constituents for a historical backtest and is therefore subject to survivorship bias. Results are interpreted as pipeline validation, not deployable trading performance.
 
+The FedAlpha research contribution is a regime-aware personalized federated Ridge baseline: client aggregation weights combine training sample size, validation Sharpe, current-regime compatibility, and validation volatility; the personalized variant shrinks the global model back toward each client's local model.
+
 ## Success Criteria
 
 The project is successful if it rigorously demonstrates at least one of:

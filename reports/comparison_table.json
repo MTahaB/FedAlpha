@@ -52,5 +52,23 @@
     "turnover": 1.2482733673068476,
     "costs": 1.5034666666666667,
     "result_vs_local": "+0.556 Sharpe"
+  },
+  {
+    "method": "FedAlpha Regime-Aware",
+    "mean_sharpe": -1.1893088051669598,
+    "cagr": -0.3853237642460756,
+    "max_drawdown": -0.9533423916688241,
+    "turnover": 1.301004595233119,
+    "costs": 1.56736,
+    "result_vs_local": "+0.117 Sharpe"
+  },
+  {
+    "method": "FedAlpha Personalized",
+    "mean_sharpe": -1.1021955025217054,
+    "cagr": -0.1774585945345476,
+    "max_drawdown": -0.7301950200807437,
+    "turnover": 1.0174462898883039,
+    "costs": 1.2396622222222222,
+    "result_vs_local": "+0.234 Sharpe"
   }
 ]

@@ -60,6 +60,8 @@ def test_full_research_study_writes_core_artifacts(tmp_path):
         "Local Ridge",
         "FedAvg",
         "Robust Aggregation",
+        "FedAlpha Regime-Aware",
+        "FedAlpha Personalized",
     ]
     ci_status = json.loads((reports / "ci_status.json").read_text(encoding="utf-8"))
     assert ci_status["visible_result"] == "PASS for commit 9fd5f1d"

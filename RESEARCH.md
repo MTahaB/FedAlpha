@@ -21,6 +21,12 @@
 | FL + DP-SGD | Privacy-performance tradeoff |
 | FL + Byzantine defense | Malicious-client robustness |
 | FL + fine-tuning | Personalized federation |
+| FedAlpha Regime-Aware | Client weights use data size, validation Sharpe, regime compatibility, and stability |
+| FedAlpha Personalized | Regime-aware global model plus local shrinkage |
+
+## FedAlpha Contribution
+
+FedAlpha Regime-Aware Personalized FL tests whether a market-regime aware aggregation rule improves out-of-sample institutional performance under non-IID financial data. Client weights combine sample size, validation Sharpe, current-regime compatibility, and validation volatility. The personalized variant then shrinks the global Ridge coefficients toward each client's local Ridge coefficients.
 
 ## Walk-Forward Windows
 
