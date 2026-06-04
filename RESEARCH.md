@@ -49,5 +49,7 @@ The main report should include:
 - Features at date `t` may use only information available at or before `t`.
 - Labels are forward returns from `t+1` to `t+horizon`.
 - Scalers, imputers, model selection, and HMM regimes must be fitted inside each training window.
+- Regime labels are produced by fitting on train returns only, then applying the fitted detector or fitted fallback quantile thresholds to validation/test returns.
+- A five-session purge is applied before every test window for the five-day forward-return label.
 - Test windows are never used for hyperparameter selection.
 - Transaction costs are applied to weight changes, not final weights.

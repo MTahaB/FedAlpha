@@ -12,6 +12,8 @@ The central research question is:
 
 The first implementation priority is the quantitative research core: clean data, anti-leakage features, strict walk-forward validation, long-short portfolio construction, statistical tests, and baselines. Federated Learning, Differential Privacy, blockchain governance, oracle validation, MLflow, and dashboarding are layered on top of that core.
 
+All model-dependent transforms, including regime detection, are fitted exclusively within each training window. A five-session purge prevents forward-label overlap with the test set.
+
 ## Repository Map
 
 ```text

@@ -15,6 +15,10 @@ def run_byzantine_comparison(
     evaluation_data_path: Path = Path("data/raw/ohlcv.csv"),
     reports_dir: Path = Path("reports"),
     models_dir: Path = Path("models"),
+    horizon: int = 5,
+    train_fraction: float = 0.70,
+    test_start: str | None = None,
+    embargo_days: int = 5,
     malicious_attack: str = "sign_flip",
     malicious_client_indices: list[int] | None = None,
     attack_scale: float = 10.0,
@@ -28,6 +32,10 @@ def run_byzantine_comparison(
             evaluation_data_path,
             reports_dir=reports_dir,
             models_dir=models_dir,
+            horizon=horizon,
+            train_fraction=train_fraction,
+            test_start=test_start,
+            embargo_days=embargo_days,
             round_id=round_id,
             robust_aggregator=aggregator,
             malicious_attack=malicious_attack,
@@ -41,6 +49,8 @@ def run_byzantine_comparison(
                 "robust_aggregator": aggregator,
                 "malicious_attack": malicious_attack,
                 "malicious_client_indices": ",".join(str(idx) for idx in malicious_client_indices),
+                "embargo_days": int(embargo_days),
+                "regime_fit": "train_only",
                 "validated": bool(result["oracle"]["validated"]),
                 "validation_score": float(result["oracle"]["validation_score"]),
                 **result["metrics"],
@@ -76,6 +86,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--evaluation-data-path", type=Path, default=Path("data/raw/ohlcv.csv"))
     parser.add_argument("--reports-dir", type=Path, default=Path("reports"))
     parser.add_argument("--models-dir", type=Path, default=Path("models"))
+    parser.add_argument("--horizon", type=int, default=5)
+    parser.add_argument("--train-fraction", type=float, default=0.70)
+    parser.add_argument("--test-start", default=None)
+    parser.add_argument("--embargo-days", type=int, default=5)
     parser.add_argument("--malicious-attack", default="sign_flip")
     parser.add_argument("--malicious-client-indices", nargs="*", type=int, default=[2])
     parser.add_argument("--attack-scale", type=float, default=10.0)
@@ -89,6 +103,10 @@ def main() -> None:
         evaluation_data_path=args.evaluation_data_path,
         reports_dir=args.reports_dir,
         models_dir=args.models_dir,
+        horizon=args.horizon,
+        train_fraction=args.train_fraction,
+        test_start=args.test_start,
+        embargo_days=args.embargo_days,
         malicious_attack=args.malicious_attack,
         malicious_client_indices=args.malicious_client_indices,
         attack_scale=args.attack_scale,

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from quant.features import REGIME_LABELS, add_regime_labels, build_features
+from quant.features import REGIME_LABELS, add_regime_features, add_regime_labels, build_features
 
 
 def _ohlcv_panel(n_days=320, tickers=("A", "B", "C")):
@@ -38,12 +38,37 @@ def test_add_regime_labels_returns_named_volatility_regimes():
     assert set(regimes.unique()).issubset(set(REGIME_LABELS))
 
 
-def test_build_features_adds_numeric_market_regime_columns():
+def test_build_features_without_regime_labels_is_causal_only():
     ohlcv = _ohlcv_panel()
     market_returns = ohlcv["close"].unstack("ticker").pct_change().mean(axis=1)
 
     features = build_features(ohlcv, market_returns=market_returns)
 
+    assert "return_1d" in features
+    assert "market_return_1d" in features
+    assert "market_regime_code" not in features
+
+
+def test_add_regime_features_adds_numeric_market_regime_columns():
+    ohlcv = _ohlcv_panel()
+    market_returns = ohlcv["close"].unstack("ticker").pct_change().mean(axis=1)
+    regime_labels = pd.Series("bull", index=market_returns.index, name="regime")
+    features = add_regime_features(build_features(ohlcv, market_returns=market_returns), regime_labels)
+
     assert "market_regime_code" in features
     assert {"market_regime_bull", "market_regime_bear", "market_regime_crisis"}.issubset(features)
     assert features[["market_regime_bull", "market_regime_bear", "market_regime_crisis"]].dtypes.eq(float).all()
+
+
+def test_build_features_uses_supplied_regime_labels_without_refitting(monkeypatch):
+    ohlcv = _ohlcv_panel()
+    market_returns = ohlcv["close"].unstack("ticker").pct_change().mean(axis=1)
+    regime_labels = pd.Series("bull", index=market_returns.index, name="regime")
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("regimes should be supplied by the walk-forward train fit")
+
+    monkeypatch.setattr("quant.features.add_regime_labels", fail_if_called)
+    features = build_features(ohlcv, market_returns=market_returns, regime_labels=regime_labels)
+
+    assert features["market_regime_bull"].dropna().eq(1.0).all()

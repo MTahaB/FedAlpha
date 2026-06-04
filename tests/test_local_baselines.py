@@ -43,7 +43,7 @@ def test_chronological_split_keeps_future_out_of_training():
     x, y = prepare_supervised_frame(_research_panel(), horizon=5)
     x_train, x_test, y_train, y_test = chronological_split(x, y, test_start="2020-01-01")
 
-    assert x_train.index.get_level_values("date").max() < pd.Timestamp("2020-01-01")
+    assert x_train.index.get_level_values("date").max() < pd.Timestamp("2020-01-01") - pd.offsets.BDay(5)
     assert x_test.index.get_level_values("date").min() >= pd.Timestamp("2020-01-01")
     assert len(x_train) == len(y_train)
     assert len(x_test) == len(y_test)
@@ -54,6 +54,8 @@ def test_run_baselines_runs_ridge_on_real_panel():
 
     assert results["ridge"]["status"] == "ok"
     assert results["ridge"]["n_train"] > 0
+    assert results["ridge"]["embargo_days"] == 5
+    assert results["ridge"]["regime_fit"] == "train_only"
     assert "sharpe_ratio" in results["ridge"]["metrics"]
 
 

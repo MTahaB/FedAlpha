@@ -11,7 +11,7 @@ import pandas as pd
 
 from quant.backtest import backtest_predictions
 from quant.data_loader import load_ohlcv_csv
-from quant.features import build_features
+from quant.features import REGIME_LABELS, build_features
 from quant.labels import make_forward_return_labels
 from quant.metrics import summarize_performance
 from quant.models import RidgeSignalModel
@@ -40,13 +40,92 @@ def market_return_series(ohlcv: pd.DataFrame) -> pd.Series:
     return close.pct_change(fill_method=None).mean(axis=1).rename("market_return")
 
 
+def resolve_split_date(
+    dates: pd.Index,
+    train_fraction: float = 0.70,
+    test_start: str | None = None,
+) -> pd.Timestamp:
+    unique_dates = pd.Index(sorted(pd.to_datetime(pd.unique(dates))))
+    if len(unique_dates) < 3:
+        raise ValueError("Need at least three unique dates for a chronological split.")
+    if test_start is not None:
+        return pd.Timestamp(test_start)
+    cutoff = max(1, min(len(unique_dates) - 1, int(len(unique_dates) * train_fraction)))
+    return pd.Timestamp(unique_dates[cutoff])
+
+
+def embargoed_train_end(split_date: pd.Timestamp | str, embargo_days: int = 5) -> pd.Timestamp:
+    if embargo_days < 0:
+        raise ValueError("embargo_days must be non-negative.")
+    split = pd.Timestamp(split_date)
+    if embargo_days == 0:
+        return split
+    return split - pd.offsets.BDay(embargo_days)
+
+
+def train_fitted_regime_labels(
+    market_returns: pd.Series,
+    *,
+    train_start: str | pd.Timestamp | None = None,
+    train_end: str | pd.Timestamp | None = None,
+) -> pd.Series:
+    """Fit regime detection on train returns only, then label all available dates."""
+    returns = market_returns.astype(float).sort_index()
+    train_mask = pd.Series(True, index=returns.index)
+    if train_start is not None:
+        train_mask &= returns.index >= pd.Timestamp(train_start)
+    if train_end is not None:
+        train_mask &= returns.index < pd.Timestamp(train_end)
+
+    train_returns = returns.loc[train_mask].dropna()
+    if len(train_returns) < 30:
+        return _train_quantile_regime_labels(returns, train_returns)
+
+    valid_returns = returns.dropna()
+    try:
+        from quant.regimes import MarketRegimeDetector
+
+        detector = MarketRegimeDetector().fit(train_returns.to_numpy())
+        labels = pd.Series(
+            detector.predict(valid_returns.to_numpy()),
+            index=valid_returns.index,
+            name="regime",
+        )
+        return labels.reindex(returns.index).ffill().bfill().rename("regime")
+    except Exception:
+        return _train_quantile_regime_labels(returns, train_returns)
+
+
+def _train_quantile_regime_labels(returns: pd.Series, train_returns: pd.Series) -> pd.Series:
+    volatility = returns.rolling(20).std()
+    train_volatility = train_returns.rolling(20).std().dropna()
+    if train_volatility.empty:
+        return pd.Series("crisis", index=returns.index, name="regime")
+
+    low, high = train_volatility.quantile([1 / 3, 2 / 3]).tolist()
+    labels = pd.Series(index=returns.index, dtype=object, name="regime")
+    labels.loc[volatility <= low] = REGIME_LABELS[0]
+    labels.loc[(volatility > low) & (volatility <= high)] = REGIME_LABELS[1]
+    labels.loc[volatility > high] = REGIME_LABELS[2]
+    return labels.ffill().bfill().fillna("crisis").rename("regime")
+
+
 def prepare_supervised_dataset(
     ohlcv: pd.DataFrame,
     horizon: int = 5,
     feature_columns: list[str] | None = None,
+    regime_labels: pd.Series | None = None,
+    regime_train_start: str | pd.Timestamp | None = None,
+    regime_train_end: str | pd.Timestamp | None = None,
 ) -> SupervisedDataset:
     market_returns = market_return_series(ohlcv)
-    features = build_features(ohlcv, market_returns=market_returns)
+    if regime_labels is None and (regime_train_start is not None or regime_train_end is not None):
+        regime_labels = train_fitted_regime_labels(
+            market_returns,
+            train_start=regime_train_start,
+            train_end=regime_train_end,
+        )
+    features = build_features(ohlcv, market_returns=market_returns, regime_labels=regime_labels)
     labels = make_forward_return_labels(ohlcv, horizon=horizon)
     target = f"forward_return_{horizon}d"
     x = features.select_dtypes(include=[np.number]).dropna(axis=1, how="all")
@@ -62,25 +141,71 @@ def prepare_supervised_dataset(
     )
 
 
+def resolve_supervised_split_date(
+    ohlcv: pd.DataFrame,
+    *,
+    horizon: int = 5,
+    train_fraction: float = 0.70,
+    test_start: str | None = None,
+    feature_columns: list[str] | None = None,
+) -> pd.Timestamp:
+    if test_start is not None:
+        return pd.Timestamp(test_start)
+    preliminary = prepare_supervised_dataset(
+        ohlcv,
+        horizon=horizon,
+        feature_columns=feature_columns,
+    )
+    return resolve_split_date(
+        preliminary.features.index.get_level_values("date"),
+        train_fraction=train_fraction,
+    )
+
+
 def chronological_split(
     x: pd.DataFrame,
     y: pd.Series,
     train_fraction: float = 0.70,
     test_start: str | None = None,
+    embargo_days: int = 5,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     dates = pd.Index(sorted(pd.unique(x.index.get_level_values("date"))))
-    if len(dates) < 3:
-        raise ValueError("Need at least three unique dates for a chronological split.")
+    split_date = resolve_split_date(dates, train_fraction=train_fraction, test_start=test_start)
+    return purged_time_split(
+        x,
+        y,
+        test_start=split_date,
+        horizon=embargo_days,
+    )
 
-    if test_start is not None:
-        split_date = pd.Timestamp(test_start)
-    else:
-        cutoff = max(1, min(len(dates) - 1, int(len(dates) * train_fraction)))
-        split_date = pd.Timestamp(dates[cutoff])
+
+def purged_time_split(
+    x: pd.DataFrame,
+    y: pd.Series,
+    *,
+    train_start: str | pd.Timestamp | None = None,
+    test_start: str | pd.Timestamp,
+    test_end: str | pd.Timestamp | None = None,
+    horizon: int = 5,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """Chronological split with a purge before the test window.
+
+    The forward label at decision date `t` uses future returns through
+    `t + horizon`, so the last `horizon` train sessions are excluded before
+    the test starts.
+    """
+    if horizon < 0:
+        raise ValueError("horizon must be non-negative.")
+    split_date = pd.Timestamp(test_start)
+    train_cutoff = embargoed_train_end(split_date, embargo_days=horizon)
 
     date_index = pd.to_datetime(x.index.get_level_values("date"))
-    train_mask = date_index < split_date
+    train_mask = date_index < train_cutoff
+    if train_start is not None:
+        train_mask &= date_index >= pd.Timestamp(train_start)
     test_mask = date_index >= split_date
+    if test_end is not None:
+        test_mask &= date_index < pd.Timestamp(test_end)
     if not train_mask.any() or not test_mask.any():
         raise ValueError(f"Split date {split_date.date()} produced an empty train or test set.")
     return x.loc[train_mask], x.loc[test_mask], y.loc[train_mask], y.loc[test_mask]
@@ -112,13 +237,28 @@ def train_local_model(
     alpha: float = 1.0,
     train_fraction: float = 0.70,
     test_start: str | None = None,
+    embargo_days: int = 5,
 ) -> LocalTrainingResult:
-    dataset = prepare_supervised_dataset(load_ohlcv_csv(partition_path), horizon=horizon, feature_columns=feature_columns)
+    ohlcv = load_ohlcv_csv(partition_path)
+    split_date = resolve_supervised_split_date(
+        ohlcv,
+        horizon=horizon,
+        feature_columns=feature_columns,
+        train_fraction=train_fraction,
+        test_start=test_start,
+    )
+    dataset = prepare_supervised_dataset(
+        ohlcv,
+        horizon=horizon,
+        feature_columns=feature_columns,
+        regime_train_end=embargoed_train_end(split_date, embargo_days=embargo_days),
+    )
     x_train, _, y_train, _ = chronological_split(
         dataset.features,
         dataset.labels,
         train_fraction=train_fraction,
-        test_start=test_start,
+        test_start=split_date.date().isoformat(),
+        embargo_days=embargo_days,
     )
     model = RidgeSignalModel(alpha=alpha).fit(x_train.to_numpy(), y_train.to_numpy())
     preds = model.predict(x_train.to_numpy())
@@ -161,15 +301,29 @@ def evaluate_model_state(
     horizon: int = 5,
     train_fraction: float = 0.70,
     test_start: str | None = None,
+    embargo_days: int = 5,
     top_k: int = 5,
     bottom_k: int = 5,
 ) -> tuple[pd.Series, pd.Series, dict]:
-    dataset = prepare_supervised_dataset(ohlcv, horizon=horizon, feature_columns=state["feature_columns"])
+    split_date = resolve_supervised_split_date(
+        ohlcv,
+        horizon=horizon,
+        feature_columns=state["feature_columns"],
+        train_fraction=train_fraction,
+        test_start=test_start,
+    )
+    dataset = prepare_supervised_dataset(
+        ohlcv,
+        horizon=horizon,
+        feature_columns=state["feature_columns"],
+        regime_train_end=embargoed_train_end(split_date, embargo_days=embargo_days),
+    )
     _, x_test, _, _ = chronological_split(
         dataset.features,
         dataset.labels,
         train_fraction=train_fraction,
-        test_start=test_start,
+        test_start=split_date.date().isoformat(),
+        embargo_days=embargo_days,
     )
     model = ridge_from_state(state)
     predictions = pd.Series(model.predict(x_test.to_numpy()), index=x_test.index, name="prediction")
@@ -263,11 +417,22 @@ def run_centralized_pipeline(
     horizon: int = 5,
     alpha: float = 1.0,
     test_start: str | None = None,
+    embargo_days: int = 5,
     oracle_url: str | None = None,
 ) -> dict:
     ohlcv = load_ohlcv_csv(data_path)
-    dataset = prepare_supervised_dataset(ohlcv, horizon=horizon)
-    x_train, x_test, y_train, _ = chronological_split(dataset.features, dataset.labels, test_start=test_start)
+    split_date = resolve_supervised_split_date(ohlcv, horizon=horizon, test_start=test_start)
+    dataset = prepare_supervised_dataset(
+        ohlcv,
+        horizon=horizon,
+        regime_train_end=embargoed_train_end(split_date, embargo_days=embargo_days),
+    )
+    x_train, x_test, y_train, _ = chronological_split(
+        dataset.features,
+        dataset.labels,
+        test_start=split_date.date().isoformat(),
+        embargo_days=embargo_days,
+    )
     model = RidgeSignalModel(alpha=alpha).fit(x_train.to_numpy(), y_train.to_numpy())
     state = model_state_from_ridge(model, list(x_train.columns))
     predictions = pd.Series(model.predict(x_test.to_numpy()), index=x_test.index, name="prediction")

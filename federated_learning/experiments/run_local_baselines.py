@@ -15,7 +15,13 @@ from quant.backtest import backtest_predictions
 from quant.data_loader import load_ohlcv_csv
 from quant.metrics import summarize_performance
 from quant.models import OptionalDependencyMissing, RidgeSignalModel, TreeBoostingSignalModel
-from quant.pipeline import chronological_split, market_return_series, prepare_supervised_dataset
+from quant.pipeline import (
+    chronological_split,
+    embargoed_train_end,
+    prepare_supervised_dataset,
+    purged_time_split,
+    resolve_supervised_split_date,
+)
 
 
 ModelFactory = Callable[[], object]
@@ -47,7 +53,12 @@ def prepare_supervised_frame(
     horizon: int = 5,
 ) -> tuple[pd.DataFrame, pd.Series]:
     try:
-        dataset = prepare_supervised_dataset(ohlcv, horizon=horizon)
+        split_date = resolve_supervised_split_date(ohlcv, horizon=horizon)
+        dataset = prepare_supervised_dataset(
+            ohlcv,
+            horizon=horizon,
+            regime_train_end=embargoed_train_end(split_date, embargo_days=horizon),
+        )
     except ValueError as exc:
         raise ValueError(
             "No supervised rows remain after feature/label alignment. "
@@ -74,9 +85,21 @@ def run_baselines(
     model_names: list[str],
     horizon: int = 5,
     test_start: str | None = None,
+    embargo_days: int = 5,
 ) -> dict[str, dict]:
-    x, y = prepare_supervised_frame(ohlcv, horizon=horizon)
-    x_train, x_test, y_train, _ = chronological_split(x, y, test_start=test_start)
+    split_date = resolve_supervised_split_date(ohlcv, horizon=horizon, test_start=test_start)
+    dataset = prepare_supervised_dataset(
+        ohlcv,
+        horizon=horizon,
+        regime_train_end=embargoed_train_end(split_date, embargo_days=embargo_days),
+    )
+    x, y = dataset.features, dataset.labels
+    x_train, x_test, y_train, _ = chronological_split(
+        x,
+        y,
+        test_start=test_start,
+        embargo_days=embargo_days,
+    )
 
     results: dict[str, dict] = {}
     for name, factory in baseline_factories(model_names).items():
@@ -93,6 +116,8 @@ def run_baselines(
             "status": "ok",
             "n_train": int(len(x_train)),
             "n_test": int(len(x_test)),
+            "embargo_days": int(embargo_days),
+            "regime_fit": "train_only",
             "metrics": summarize_performance(returns),
         }
     return results
@@ -103,7 +128,7 @@ def _slice_dates(frame: pd.DataFrame | pd.Series, start: str, end: str) -> pd.Da
     return frame.loc[(index >= pd.Timestamp(start)) & (index < pd.Timestamp(end))]
 
 
-def _metrics_row(window: str, method: str, returns: pd.Series) -> dict[str, object]:
+def _metrics_row(window: str, method: str, returns: pd.Series, **extra: object) -> dict[str, object]:
     metrics = summarize_performance(returns)
     return {
         "window": window,
@@ -111,6 +136,7 @@ def _metrics_row(window: str, method: str, returns: pd.Series) -> dict[str, obje
         "status": "ok",
         "n_returns": int(returns.dropna().shape[0]),
         **metrics,
+        **extra,
     }
 
 
@@ -118,9 +144,9 @@ def run_walk_forward_baselines(
     ohlcv: pd.DataFrame,
     model_names: list[str],
     horizon: int = 5,
+    embargo_days: int = 5,
 ) -> tuple[pd.DataFrame, dict[str, pd.Series]]:
     """Run naive and ML baselines on the research walk-forward windows."""
-    dataset = prepare_supervised_dataset(ohlcv, horizon=horizon)
     asset_returns = asset_return_panel(ohlcv)
     market_close = ohlcv["close"].unstack("ticker").sort_index().mean(axis=1)
 
@@ -128,6 +154,13 @@ def run_walk_forward_baselines(
     return_series: dict[str, pd.Series] = {}
 
     for window in make_expanding_windows():
+        train_cutoff = embargoed_train_end(pd.Timestamp(window.test_start), embargo_days=embargo_days)
+        dataset = prepare_supervised_dataset(
+            ohlcv,
+            horizon=horizon,
+            regime_train_start=window.train_start,
+            regime_train_end=train_cutoff,
+        )
         test_asset_returns = _slice_dates(asset_returns, window.test_start, window.test_end)
         buy_hold = _slice_dates(buy_and_hold_returns(market_close), window.test_start, window.test_end)
         equal_weight = equal_weight_returns(test_asset_returns).rename("equal_weight")
@@ -142,19 +175,25 @@ def run_walk_forward_baselines(
             "equal_weight": equal_weight,
             "momentum_20d": momentum,
         }.items():
-            rows.append(_metrics_row(window.name, method, returns))
+            rows.append(
+                _metrics_row(
+                    window.name,
+                    method,
+                    returns,
+                    embargo_days=embargo_days,
+                    regime_fit="not_used",
+                )
+            )
             return_series[f"{window.name}:{method}"] = returns
 
-        date_index = pd.to_datetime(dataset.features.index.get_level_values("date"))
-        train_mask = (date_index >= pd.Timestamp(window.train_start)) & (
-            date_index < pd.Timestamp(window.test_start)
+        x_train, x_test, y_train, _ = purged_time_split(
+            dataset.features,
+            dataset.labels,
+            train_start=window.train_start,
+            test_start=window.test_start,
+            test_end=window.test_end,
+            horizon=embargo_days,
         )
-        test_mask = (date_index >= pd.Timestamp(window.test_start)) & (
-            date_index < pd.Timestamp(window.test_end)
-        )
-        x_train = dataset.features.loc[train_mask]
-        y_train = dataset.labels.loc[train_mask]
-        x_test = dataset.features.loc[test_mask]
 
         if x_train.empty or x_test.empty:
             for name in model_names:
@@ -164,6 +203,8 @@ def run_walk_forward_baselines(
                         "method": name,
                         "status": "skipped",
                         "n_returns": 0,
+                        "embargo_days": embargo_days,
+                        "regime_fit": "train_only",
                         "reason": "empty train or test split",
                     }
                 )
@@ -182,11 +223,21 @@ def run_walk_forward_baselines(
                         "method": name,
                         "status": "skipped",
                         "n_returns": 0,
+                        "embargo_days": embargo_days,
+                        "regime_fit": "train_only",
                         "reason": str(exc),
                     }
                 )
                 continue
-            rows.append(_metrics_row(window.name, name, returns))
+            rows.append(
+                _metrics_row(
+                    window.name,
+                    name,
+                    returns,
+                    embargo_days=embargo_days,
+                    regime_fit="train_only",
+                )
+            )
             return_series[f"{window.name}:{name}"] = returns.rename(name)
 
     return pd.DataFrame(rows), return_series
@@ -238,6 +289,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--models", nargs="+", default=["ridge", "lightgbm", "xgboost"])
     parser.add_argument("--reports-dir", type=Path, default=DEFAULT_REPORTS_DIR)
     parser.add_argument("--single-split", action="store_true")
+    parser.add_argument("--embargo-days", type=int, default=5)
     return parser.parse_args()
 
 
@@ -255,6 +307,7 @@ def main() -> None:
             model_names=args.models,
             horizon=args.horizon,
             test_start=args.test_start,
+            embargo_days=args.embargo_days,
         )
         print(json.dumps(results, indent=2, default=float))
         return
@@ -263,6 +316,7 @@ def main() -> None:
         ohlcv,
         model_names=args.models,
         horizon=args.horizon,
+        embargo_days=args.embargo_days,
     )
     paths = write_baseline_reports(summary, return_series, reports_dir=args.reports_dir)
     print(json.dumps({"summary": summary.to_dict(orient="records"), "paths": paths}, indent=2, default=str))

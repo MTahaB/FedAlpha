@@ -11,8 +11,10 @@ import pandas as pd
 from federated_learning.aggregation import fedavg, krum_layers, median_layers, simulate_byzantine_updates, trimmed_mean_layers
 from quant.data_loader import load_ohlcv_csv
 from quant.pipeline import (
+    embargoed_train_end,
     evaluate_model_state,
     prepare_supervised_dataset,
+    resolve_supervised_split_date,
     save_pipeline_artifacts,
     train_local_model,
     validate_with_oracle,
@@ -101,6 +103,9 @@ def run_federated_pipeline(
     models_dir: Path = Path("models"),
     horizon: int = 5,
     alpha: float = 1.0,
+    train_fraction: float = 0.70,
+    test_start: str | None = None,
+    embargo_days: int = 5,
     oracle_url: str | None = None,
     round_id: int = 1,
     robust_aggregator: str = "fedavg",
@@ -113,7 +118,18 @@ def run_federated_pipeline(
         raise ValueError("At least two client partitions are required.")
 
     evaluation_ohlcv = load_ohlcv_csv(evaluation_data_path)
-    evaluation_dataset = prepare_supervised_dataset(evaluation_ohlcv, horizon=horizon)
+    split_date = resolve_supervised_split_date(
+        evaluation_ohlcv,
+        horizon=horizon,
+        train_fraction=train_fraction,
+        test_start=test_start,
+    )
+    train_cutoff = embargoed_train_end(split_date, embargo_days=embargo_days)
+    evaluation_dataset = prepare_supervised_dataset(
+        evaluation_ohlcv,
+        horizon=horizon,
+        regime_train_end=train_cutoff,
+    )
     feature_columns = list(evaluation_dataset.features.columns)
 
     local_results = [
@@ -122,6 +138,9 @@ def run_federated_pipeline(
             feature_columns=feature_columns,
             horizon=horizon,
             alpha=alpha,
+            train_fraction=train_fraction,
+            test_start=test_start,
+            embargo_days=embargo_days,
         )
         for partition in partition_paths
     ]
@@ -133,7 +152,17 @@ def run_federated_pipeline(
         malicious_client_indices=malicious_client_indices,
         attack_scale=attack_scale,
     )
-    predictions, returns, metrics = evaluate_model_state(global_state, evaluation_ohlcv, horizon=horizon)
+    global_state["embargo_days"] = int(embargo_days)
+    global_state["regime_fit"] = "train_only"
+    global_state["split_date"] = split_date.date().isoformat()
+    predictions, returns, metrics = evaluate_model_state(
+        global_state,
+        evaluation_ohlcv,
+        horizon=horizon,
+        train_fraction=train_fraction,
+        test_start=test_start,
+        embargo_days=embargo_days,
+    )
     oracle_response = validate_with_oracle(
         global_state,
         returns,
@@ -149,6 +178,8 @@ def run_federated_pipeline(
                 "client": f"client_{idx + 1}",
                 "examples": result.n_examples,
                 "loss": result.train_loss,
+                "embargo_days": embargo_days,
+                "regime_fit": "train_only",
             }
             for idx, result in enumerate(local_results)
         ]
@@ -178,6 +209,8 @@ def run_federated_pipeline(
         "robust_aggregator": robust_aggregator,
         "malicious_attack": malicious_attack,
         "malicious_client_indices": malicious_client_indices or [],
+        "embargo_days": embargo_days,
+        "regime_fit": "train_only",
     }
 
 
@@ -189,6 +222,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--models-dir", type=Path, default=Path("models"))
     parser.add_argument("--horizon", type=int, default=5)
     parser.add_argument("--alpha", type=float, default=1.0)
+    parser.add_argument("--train-fraction", type=float, default=0.70)
+    parser.add_argument("--test-start", default=None)
+    parser.add_argument("--embargo-days", type=int, default=5)
     parser.add_argument("--oracle-url", default=None)
     parser.add_argument("--round-id", type=int, default=1)
     parser.add_argument("--robust-aggregator", default=os.getenv("FL_ROBUST_AGGREGATOR", "fedavg"))
@@ -208,6 +244,9 @@ def main() -> None:
         models_dir=args.models_dir,
         horizon=args.horizon,
         alpha=args.alpha,
+        train_fraction=args.train_fraction,
+        test_start=args.test_start,
+        embargo_days=args.embargo_days,
         oracle_url=args.oracle_url,
         round_id=args.round_id,
         robust_aggregator=args.robust_aggregator,

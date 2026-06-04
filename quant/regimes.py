@@ -10,13 +10,16 @@ class MarketRegimeDetector:
 
     REGIME_NAMES = ("bull", "bear", "crisis")
 
-    def __init__(self, n_states: int = 3, random_state: int = 42):
+    def __init__(self, n_states: int = 3, random_state: int = 42, use_hmm: bool = True):
         if n_states <= 0:
             raise ValueError("n_states must be positive.")
         self.n_states = n_states
         self.random_state = random_state
+        self.use_hmm = use_hmm
         self.model = None
         self._state_to_label: dict[int, str] = {}
+        self.quantile_thresholds_: np.ndarray | None = None
+        self.quantile_center_: float | None = None
 
     def fit(self, returns_train: np.ndarray) -> "MarketRegimeDetector":
         values = np.asarray(returns_train, dtype=float).reshape(-1)
@@ -26,6 +29,8 @@ class MarketRegimeDetector:
         x = values.reshape(-1, 1)
 
         try:
+            if not self.use_hmm:
+                raise ImportError("HMM disabled")
             from hmmlearn import hmm
 
             self.model = hmm.GaussianHMM(
@@ -37,7 +42,7 @@ class MarketRegimeDetector:
             states = self.model.fit(x).predict(x)
         except ImportError:
             self.model = None
-            states = self._quantile_states(values)
+            states = self._fit_quantile_states(values)
 
         ordered = (
             sorted(np.unique(states), key=lambda state: float(np.std(values[states == state])))
@@ -53,7 +58,7 @@ class MarketRegimeDetector:
         if self.model is not None:
             states = self.model.predict(values.reshape(-1, 1))
         else:
-            states = self._quantile_states(values)
+            states = self._predict_quantile_states(values)
         return np.asarray([self._state_to_label.get(int(state), "crisis") for state in states], dtype=object)
 
     def client_regime_weights(self, client_regimes: dict[str, str]) -> dict[str, float]:
@@ -67,10 +72,17 @@ class MarketRegimeDetector:
         total = sum(raw.values())
         return {client: weight / total for client, weight in raw.items()}
 
-    def _quantile_states(self, values: np.ndarray) -> np.ndarray:
-        volatility = np.abs(values - np.mean(values))
-        quantiles = np.quantile(volatility, np.linspace(0, 1, self.n_states + 1))
-        return np.clip(np.digitize(volatility, quantiles[1:-1], right=True), 0, self.n_states - 1)
+    def _fit_quantile_states(self, values: np.ndarray) -> np.ndarray:
+        self.quantile_center_ = float(np.mean(values))
+        volatility = np.abs(values - self.quantile_center_)
+        self.quantile_thresholds_ = np.quantile(volatility, np.linspace(0, 1, self.n_states + 1)[1:-1])
+        return self._predict_quantile_states(values)
+
+    def _predict_quantile_states(self, values: np.ndarray) -> np.ndarray:
+        if self.quantile_thresholds_ is None or self.quantile_center_ is None:
+            raise RuntimeError("MarketRegimeDetector must be fitted before predict().")
+        volatility = np.abs(values - self.quantile_center_)
+        return np.clip(np.digitize(volatility, self.quantile_thresholds_, right=True), 0, self.n_states - 1)
 
     def _regime_names(self, n_states: int) -> list[str]:
         if n_states == 1:

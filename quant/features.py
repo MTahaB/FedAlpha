@@ -14,8 +14,15 @@ def _rsi(close: pd.Series, window: int = 14) -> pd.Series:
     return 100 - (100 / (1 + rs))
 
 
-def build_features(ohlcv: pd.DataFrame, market_returns: pd.Series | None = None) -> pd.DataFrame:
-    """Create causal daily features for a MultiIndex OHLCV frame."""
+def build_causal_features(
+    ohlcv: pd.DataFrame,
+    market_returns: pd.Series | None = None,
+) -> pd.DataFrame:
+    """Create causal daily features for a MultiIndex OHLCV frame.
+
+    These features use only information available at or before each decision
+    date, so they may be computed before a walk-forward split.
+    """
     if not isinstance(ohlcv.index, pd.MultiIndex):
         raise ValueError("Expected MultiIndex [date, ticker].")
 
@@ -49,12 +56,38 @@ def build_features(ohlcv: pd.DataFrame, market_returns: pd.Series | None = None)
         aligned = market_returns.reindex(dates).to_numpy()
         out["market_return_1d"] = aligned
         out["excess_return_1d"] = out["return_1d"] - aligned
-        regimes = add_regime_labels(market_returns).reindex(dates).ffill().infer_objects(copy=False)
-        out["market_regime_code"] = regimes.map({label: idx for idx, label in enumerate(REGIME_LABELS)}).to_numpy()
-        for label in REGIME_LABELS:
-            out[f"market_regime_{label}"] = (regimes == label).astype(float).to_numpy()
-
     return out.replace([np.inf, -np.inf], np.nan)
+
+
+def add_regime_features(features: pd.DataFrame, regime_labels: pd.Series) -> pd.DataFrame:
+    """Append pre-fitted regime labels to a feature matrix.
+
+    `regime_labels` must be produced by a detector fitted inside the training
+    window. This function only aligns labels to feature dates; it never fits a
+    regime model.
+    """
+    if not isinstance(features.index, pd.MultiIndex):
+        raise ValueError("Expected MultiIndex [date, ticker].")
+
+    out = features.copy()
+    dates = out.index.get_level_values("date")
+    regimes = regime_labels.rename("regime").reindex(dates).ffill().bfill().infer_objects(copy=False)
+    out["market_regime_code"] = regimes.map({label: idx for idx, label in enumerate(REGIME_LABELS)}).to_numpy()
+    for label in REGIME_LABELS:
+        out[f"market_regime_{label}"] = (regimes == label).astype(float).to_numpy()
+    return out
+
+
+def build_features(
+    ohlcv: pd.DataFrame,
+    market_returns: pd.Series | None = None,
+    regime_labels: pd.Series | None = None,
+) -> pd.DataFrame:
+    """Build causal features and optionally append pre-fitted regime features."""
+    features = build_causal_features(ohlcv, market_returns=market_returns)
+    if regime_labels is None:
+        return features
+    return add_regime_features(features, regime_labels)
 
 
 def add_regime_labels(
