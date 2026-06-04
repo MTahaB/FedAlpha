@@ -96,6 +96,26 @@ def train_fitted_regime_labels(
         return _train_quantile_regime_labels(returns, train_returns)
 
 
+def train_fitted_quantile_regime_labels(
+    market_returns: pd.Series,
+    *,
+    train_start: str | pd.Timestamp | None = None,
+    train_end: str | pd.Timestamp | None = None,
+) -> pd.Series:
+    """Fast deterministic train-only volatility regime detector.
+
+    This uses quantile thresholds fitted only on the training slice and then
+    applies those frozen thresholds to all dates.
+    """
+    returns = market_returns.astype(float).sort_index()
+    train_mask = pd.Series(True, index=returns.index)
+    if train_start is not None:
+        train_mask &= returns.index >= pd.Timestamp(train_start)
+    if train_end is not None:
+        train_mask &= returns.index < pd.Timestamp(train_end)
+    return _train_quantile_regime_labels(returns, returns.loc[train_mask].dropna())
+
+
 def _train_quantile_regime_labels(returns: pd.Series, train_returns: pd.Series) -> pd.Series:
     volatility = returns.rolling(20).std()
     train_volatility = train_returns.rolling(20).std().dropna()

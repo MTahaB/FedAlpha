@@ -118,6 +118,16 @@ npm test
 9. Streamlit dashboard.
 10. Research report and notebooks.
 
+## Reproducing the Main Study
+
+```bash
+python -m federated_learning.experiments.run_full_research_study
+```
+
+This regenerates the comparison summary, walk-forward window results, equity curves, drawdowns, regime breakdown, statistical tests, and visible CI status under `reports/`.
+
+The current experiment uses today's S&P 100 constituents for a historical backtest and is therefore subject to survivorship bias. Results are interpreted as pipeline validation, not deployable trading performance.
+
 ## Success Criteria
 
 The project is successful if it rigorously demonstrates at least one of:

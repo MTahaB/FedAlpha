@@ -6,7 +6,8 @@
     "validated": true,
     "validation_timestamp": "2026-06-03T20:19:22.202972+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 2,
@@ -15,7 +16,8 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:02:21.606598+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 10,
@@ -24,7 +26,8 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:04:59.295649+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 11,
@@ -33,7 +36,8 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:05:03.970749+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 12,
@@ -42,7 +46,8 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:28:42.211100+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 10,
@@ -51,7 +56,8 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:29:08.186641+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 11,
@@ -60,7 +66,8 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:29:20.298518+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 10,
@@ -69,7 +76,8 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:30:14.526882+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   },
   {
     "round_id": 11,
@@ -78,6 +86,97 @@
     "validated": false,
     "validation_timestamp": "2026-06-03T21:30:25.560932+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 1,
+    "model_hash": "0xf22b520d032f3606f4ddcb9bbeb80a526324cfdf04fb39330b20f40750a747e3",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T22:05:41.588234+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 30,
+    "model_hash": "0x81a5245850328ad827cd051e95f8e63e6a88cd3635733c61f3c72e17d5ab577d",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T22:05:58.263309+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 31,
+    "model_hash": "0x3517d3a22b519bcbd534a558344ca17027cc602f83efd7a6a6a61ed9a24641a7",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T22:06:09.733293+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 10,
+    "model_hash": "0x182aff619c7be5c97723b79f6b358b13c0e9a7c2e2398f3dc0f33b8e56f8d93f",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T22:06:36.656281+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 11,
+    "model_hash": "0x3416616d977ffa84de76662f29ef149d36ba54f6c3f284abc29cb3e8d3bf161a",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-03T22:06:53.108522+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 1,
+    "model_hash": "0x81a5245850328ad827cd051e95f8e63e6a88cd3635733c61f3c72e17d5ab577d",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-04T03:15:38.707036+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 31,
+    "model_hash": "0x3517d3a22b519bcbd534a558344ca17027cc602f83efd7a6a6a61ed9a24641a7",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-04T03:15:38.747231+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 10,
+    "model_hash": "0x182aff619c7be5c97723b79f6b358b13c0e9a7c2e2398f3dc0f33b8e56f8d93f",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-04T03:16:11.825055+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  },
+  {
+    "round_id": 11,
+    "model_hash": "0x3416616d977ffa84de76662f29ef149d36ba54f6c3f284abc29cb3e8d3bf161a",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-04T03:16:32.324312+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
   }
 ]

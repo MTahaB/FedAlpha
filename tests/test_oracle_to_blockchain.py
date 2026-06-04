@@ -26,5 +26,8 @@ def test_oracle_to_blockchain_anchor_file_event(tmp_path, monkeypatch):
     events = json.loads((tmp_path / "blockchain_events.json").read_text(encoding="utf-8"))
     assert response.status_code == 200
     assert body["blockchain_anchor"]["round_id"] == 9
+    assert body["blockchain_anchor"]["audit_label"] == "file-backed audit"
+    assert body["blockchain_anchor"]["tx_hash"] is None
     assert events[-1]["model_hash"] == body["model_hash"]
     assert events[-1]["validated"] is True
+    assert events[-1]["audit_label"] == "file-backed audit"

@@ -1,36 +1,36 @@
 {
   "performance": {
-    "annual_return": -0.09923207753906194,
-    "annual_volatility": 0.36924364783163444,
-    "sharpe_ratio": -0.09921323990623505,
-    "sortino_ratio": -0.16243880720988074,
-    "max_drawdown": -0.5051090810122101,
-    "calmar_ratio": -0.1964567283965801
+    "annual_return": -0.1100709375683735,
+    "annual_volatility": 0.3717902990263334,
+    "sharpe_ratio": -0.12851882308548856,
+    "sortino_ratio": -0.20625172406166759,
+    "max_drawdown": -0.5547115627630004,
+    "calmar_ratio": -0.1984291385961268
   },
   "statistical_tests": {
     "sharpe": {
-      "sharpe": -0.099,
-      "ci_lower": -1.05,
-      "ci_upper": 0.852,
-      "t_statistic": -0.172,
-      "p_value": 0.8637,
+      "sharpe": -0.129,
+      "ci_lower": -1.079,
+      "ci_upper": 0.822,
+      "t_statistic": -0.222,
+      "p_value": 0.8241,
       "significant": false
     },
     "bootstrap": {
       "sharpe": {
-        "mean": -0.021089065216853827,
-        "ci_lower": -0.8356839966939273,
-        "ci_upper": 0.813472406560595
+        "mean": -0.03064041069111465,
+        "ci_lower": -0.8682089631541229,
+        "ci_upper": 0.8863462475652832
       },
       "max_dd": {
-        "mean": -0.536433933080342,
-        "ci_lower": -0.7610863091516467,
-        "ci_upper": -0.3179965184893837
+        "mean": -0.553906913438825,
+        "ci_lower": -0.7789103406847814,
+        "ci_upper": -0.3293035051734442
       },
       "annual_return": {
-        "mean": -0.0591011777049245,
-        "ci_lower": -0.32335479946261925,
-        "ci_upper": 0.25731804464135055
+        "mean": -0.06218937953728008,
+        "ci_lower": -0.3450071383173039,
+        "ci_upper": 0.2819061063041057
       }
     }
   },
@@ -41,15 +41,16 @@
   },
   "validated": false,
   "validation_score": 0,
-  "model_hash": "0xe42fc905f5c9c18638813ca4ff34b114e2e6df999f87d4f91322063de3980e50",
-  "validation_timestamp": "2026-06-03T21:28:42.211100+00:00",
+  "model_hash": "0x81a5245850328ad827cd051e95f8e63e6a88cd3635733c61f3c72e17d5ab577d",
+  "validation_timestamp": "2026-06-04T03:15:38.707036+00:00",
   "blockchain_anchor": {
-    "round_id": 12,
-    "model_hash": "0xe42fc905f5c9c18638813ca4ff34b114e2e6df999f87d4f91322063de3980e50",
+    "round_id": 1,
+    "model_hash": "0x81a5245850328ad827cd051e95f8e63e6a88cd3635733c61f3c72e17d5ab577d",
     "validation_score": 0,
     "validated": false,
-    "validation_timestamp": "2026-06-03T21:28:42.211100+00:00",
+    "validation_timestamp": "2026-06-04T03:15:38.707036+00:00",
     "tx_hash": null,
-    "mode": "file"
+    "mode": "file",
+    "audit_label": "file-backed audit"
   }
 }

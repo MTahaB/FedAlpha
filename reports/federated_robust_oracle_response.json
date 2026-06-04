@@ -1,0 +1,56 @@
+{
+  "performance": {
+    "annual_return": -0.18732276261305658,
+    "annual_volatility": 0.362665355042665,
+    "sharpe_ratio": -0.391285161946698,
+    "sortino_ratio": -0.6321005630423062,
+    "max_drawdown": -0.5290560595821664,
+    "calmar_ratio": -0.3540697799794578
+  },
+  "statistical_tests": {
+    "sharpe": {
+      "sharpe": -0.391,
+      "ci_lower": -1.342,
+      "ci_upper": 0.56,
+      "t_statistic": -0.677,
+      "p_value": 0.4986,
+      "significant": false
+    },
+    "bootstrap": {
+      "sharpe": {
+        "mean": -0.30705854314896286,
+        "ci_lower": -1.0634367768937758,
+        "ci_upper": 0.46397609225605585
+      },
+      "max_dd": {
+        "mean": -0.5802541520104894,
+        "ci_lower": -0.7867214989761968,
+        "ci_upper": -0.34362438688275415
+      },
+      "annual_return": {
+        "mean": -0.1510172690802806,
+        "ci_lower": -0.37027174837197296,
+        "ci_upper": 0.10769675293879286
+      }
+    }
+  },
+  "validation_criteria": {
+    "min_sharpe_threshold": 0.1,
+    "max_drawdown_threshold": -0.5,
+    "sharpe_significant": false
+  },
+  "validated": false,
+  "validation_score": 0,
+  "model_hash": "0x3517d3a22b519bcbd534a558344ca17027cc602f83efd7a6a6a61ed9a24641a7",
+  "validation_timestamp": "2026-06-04T03:15:38.747231+00:00",
+  "blockchain_anchor": {
+    "round_id": 31,
+    "model_hash": "0x3517d3a22b519bcbd534a558344ca17027cc602f83efd7a6a6a61ed9a24641a7",
+    "validation_score": 0,
+    "validated": false,
+    "validation_timestamp": "2026-06-04T03:15:38.747231+00:00",
+    "tx_hash": null,
+    "mode": "file",
+    "audit_label": "file-backed audit"
+  }
+}

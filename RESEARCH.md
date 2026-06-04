@@ -32,6 +32,8 @@
 | 4 | 2014-2021 | 2021-2022 | 2022 |
 | 5 | 2014-2022 | 2022-2023 | 2023-2025 |
 
+Hyperparameters are selected on validation only. The final test estimate retrains the selected configuration on train plus validation, then measures the held-out test window.
+
 ## Experiment Matrix
 
 The main report should include:
@@ -53,3 +55,7 @@ The main report should include:
 - A five-session purge is applied before every test window for the five-day forward-return label.
 - Test windows are never used for hyperparameter selection.
 - Transaction costs are applied to weight changes, not final weights.
+
+## Current Data Limitation
+
+The current experiment uses today's S&P 100 constituents for a historical backtest and is therefore subject to survivorship bias. Results are interpreted as pipeline validation, not deployable trading performance.

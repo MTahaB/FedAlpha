@@ -16,6 +16,7 @@ class ValidationAnchor:
     validation_timestamp: str
     tx_hash: str | None = None
     mode: str = "file"
+    audit_label: str = "file-backed audit"
 
 
 class FileBlockchainClient:
@@ -27,10 +28,20 @@ class FileBlockchainClient:
         events = []
         if self.events_path.exists():
             events = json.loads(self.events_path.read_text(encoding="utf-8"))
+        events = [_with_audit_label(event) for event in events]
         event = asdict(anchor)
         events.append(event)
         self.events_path.write_text(json.dumps(events, indent=2), encoding="utf-8")
         return event
+
+
+def _with_audit_label(event: dict[str, Any]) -> dict[str, Any]:
+    if event.get("audit_label"):
+        return event
+    return {
+        **event,
+        "audit_label": "on-chain transaction" if event.get("tx_hash") else "file-backed audit",
+    }
 
 
 class Web3RegistryClient:
@@ -91,6 +102,7 @@ def record_oracle_validation(
                     validation_timestamp=validation_timestamp,
                     tx_hash=tx_hash,
                     mode="web3",
+                    audit_label="on-chain transaction",
                 )
             )
         except Exception as exc:

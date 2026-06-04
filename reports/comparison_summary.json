@@ -1,0 +1,56 @@
+[
+  {
+    "method": "Equal Weight",
+    "mean_sharpe": 1.2046775768006657,
+    "cagr": 0.16252207590010226,
+    "max_drawdown": -0.3206099312757459,
+    "turnover": 0.003573034544799658,
+    "costs": 0.004,
+    "result_vs_local": "+2.061 Sharpe"
+  },
+  {
+    "method": "Momentum 20D",
+    "mean_sharpe": -0.5878649404898765,
+    "cagr": -0.20664244262640863,
+    "max_drawdown": -0.826894625582677,
+    "turnover": 0.9633075092286262,
+    "costs": 7.9093333333333335,
+    "result_vs_local": "+0.772 Sharpe"
+  },
+  {
+    "method": "Centralized Ridge",
+    "mean_sharpe": -0.6193603230468159,
+    "cagr": -0.2150004612247971,
+    "max_drawdown": -0.7978495528173281,
+    "turnover": 1.456706221742976,
+    "costs": 1.8195733333333335,
+    "result_vs_local": "+0.735 Sharpe"
+  },
+  {
+    "method": "Local Ridge",
+    "mean_sharpe": -1.326635666756259,
+    "cagr": -0.18761446008734972,
+    "max_drawdown": -0.7302405913404713,
+    "turnover": 0.8809032691888776,
+    "costs": 1.060871111111111,
+    "result_vs_local": "Reference"
+  },
+  {
+    "method": "FedAvg",
+    "mean_sharpe": -0.8083115577624316,
+    "cagr": -0.3368748402518458,
+    "max_drawdown": -0.9347199087282344,
+    "turnover": 1.3891074854257763,
+    "costs": 1.7298133333333334,
+    "result_vs_local": "+0.405 Sharpe"
+  },
+  {
+    "method": "Robust Aggregation",
+    "mean_sharpe": -0.7548018304445273,
+    "cagr": -0.2624613300218799,
+    "max_drawdown": -0.8611165941653907,
+    "turnover": 1.2482733673068476,
+    "costs": 1.5034666666666667,
+    "result_vs_local": "+0.556 Sharpe"
+  }
+]

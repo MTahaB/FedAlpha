@@ -54,10 +54,11 @@ def render_verification() -> None:
     )
 
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 metrics = results["metrics"]
 oracle = results["oracle"]
 privacy = results["privacy"]
+ci_status = results["ci_status"]
 latest_epsilon = "pending"
 if not privacy.empty and "epsilon" in privacy:
     latest_epsilon = f"{privacy['epsilon'].replace([float('inf')], pd.NA).dropna().min():.2f}"
@@ -66,13 +67,35 @@ col1.metric("Round", str(results["round"]))
 col2.metric("Model Sharpe", f"{metrics.get('sharpe_ratio', 'pending'):.3f}" if "sharpe_ratio" in metrics else "pending")
 col3.metric("Oracle verdict", str(oracle.get("validated", "pending")))
 col4.metric("Privacy epsilon", latest_epsilon)
+col5.metric("CI", ci_status.get("visible_result", "pending"))
 
-tabs = st.tabs(["Verification", "Baselines", "Training", "Backtest", "Privacy", "Byzantine", "Oracle", "Governance"])
+tabs = st.tabs(
+    [
+        "Verification",
+        "Comparison",
+        "Baselines",
+        "Training",
+        "Backtest",
+        "Privacy",
+        "Byzantine",
+        "Oracle",
+        "Governance",
+    ]
+)
 
 with tabs[0]:
     render_verification()
 
 with tabs[1]:
+    st.subheader("Main comparison")
+    comparison = results["comparison"]
+    if comparison.empty:
+        st.info("No comparison table found yet.")
+    else:
+        st.dataframe(comparison, width="stretch", hide_index=True)
+        st.bar_chart(comparison, x="method", y="sharpe_ratio")
+
+with tabs[2]:
     st.subheader("Walk-forward baselines")
     baselines = results["baselines"]
     if baselines.empty:
@@ -96,7 +119,7 @@ with tabs[1]:
         )
         st.bar_chart(visible, x="method", y="sharpe_ratio", color="window")
 
-with tabs[2]:
+with tabs[3]:
     st.subheader("Flower convergence")
     training = results["training"]
     if training.empty:
@@ -104,7 +127,7 @@ with tabs[2]:
     else:
         st.line_chart(training, x="client", y="loss")
 
-with tabs[3]:
+with tabs[4]:
     st.subheader("Backtest")
     returns = results["returns"]
     if returns.empty:
@@ -116,14 +139,14 @@ with tabs[3]:
         st.line_chart(returns, x=date_column, y="equity")
         st.json(metrics)
 
-with tabs[4]:
+with tabs[5]:
     st.subheader("Privacy-performance")
     if privacy.empty:
         st.info("No privacy tradeoff report found yet.")
     else:
         st.line_chart(privacy, x="epsilon", y="sharpe", color="mode")
 
-with tabs[5]:
+with tabs[6]:
     st.subheader("Byzantine robustness")
     byzantine = results["byzantine"]
     if byzantine.empty:
@@ -132,13 +155,13 @@ with tabs[5]:
         st.dataframe(byzantine, width="stretch", hide_index=True)
         st.bar_chart(byzantine, x="robust_aggregator", y="sharpe_ratio", color="malicious_attack")
 
-with tabs[6]:
+with tabs[7]:
     st.subheader("Oracle response")
     st.json(oracle or {"validated": None, "model_hash": None})
     if results["blockchain_events"]:
         st.subheader("Blockchain anchors")
         st.dataframe(pd.DataFrame(results["blockchain_events"]), width="stretch", hide_index=True)
 
-with tabs[7]:
+with tabs[8]:
     st.subheader("Participants")
     st.dataframe(participant_rows(results), width="stretch", hide_index=True)

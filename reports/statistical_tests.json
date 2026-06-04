@@ -1,0 +1,80 @@
+{
+  "Equal Weight": {
+    "lo_sharpe": {
+      "sharpe": 0.8953402577419415,
+      "z_stat": 21.320505280381337,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": 0.18878753046329952,
+      "ci_high": 1.7735223976467456,
+      "ci_width": 1.584734867183446
+    }
+  },
+  "Momentum 20D": {
+    "lo_sharpe": {
+      "sharpe": -0.3935113294683416,
+      "z_stat": -13.754601544576424,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": -0.9824044649898788,
+      "ci_high": 0.3000663450245769,
+      "ci_width": 1.2824708100144557
+    }
+  },
+  "Centralized Ridge": {
+    "lo_sharpe": {
+      "sharpe": -0.4301736692660221,
+      "z_stat": -14.948640955442077,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": -1.0941061720200647,
+      "ci_high": 0.24868003622374418,
+      "ci_width": 1.342786208243809
+    }
+  },
+  "Local Ridge": {
+    "lo_sharpe": {
+      "sharpe": -1.1655106043916317,
+      "z_stat": -31.186533024231526,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": -1.8852655912769238,
+      "ci_high": -0.5121530208620393,
+      "ci_width": 1.3731125704148845
+    }
+  },
+  "FedAvg": {
+    "lo_sharpe": {
+      "sharpe": -0.7608769039939453,
+      "z_stat": -23.512060965934086,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": -1.50308350209935,
+      "ci_high": -0.13084596011889169,
+      "ci_width": 1.3722375419804584
+    }
+  },
+  "Robust Aggregation": {
+    "lo_sharpe": {
+      "sharpe": -0.6093807572591068,
+      "z_stat": -19.123212666846698,
+      "p_value": 0.0,
+      "significant_5pct": true
+    },
+    "block_bootstrap": {
+      "ci_low": -1.3136868180321983,
+      "ci_high": 0.014500674040429675,
+      "ci_width": 1.328187492072628
+    }
+  }
+}

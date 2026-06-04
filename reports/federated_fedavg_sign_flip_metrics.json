@@ -1,8 +1,8 @@
 {
-  "annual_return": -0.4555107287776561,
-  "annual_volatility": 0.37671223941806414,
-  "sharpe_ratio": -1.4227341460426923,
-  "sortino_ratio": -2.0533580917684224,
-  "max_drawdown": -0.8808399330025363,
-  "calmar_ratio": -0.5171322412971762
+  "annual_return": -0.44504104950418466,
+  "annual_volatility": 0.37231401137080633,
+  "sharpe_ratio": -1.3925574112907073,
+  "sortino_ratio": -1.988092061534316,
+  "max_drawdown": -0.8751039788581148,
+  "calmar_ratio": -0.5085579088383296
 }
